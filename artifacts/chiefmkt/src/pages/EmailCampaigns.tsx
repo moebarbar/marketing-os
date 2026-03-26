@@ -1,17 +1,25 @@
 import { useState } from "react";
 import { useListEmailCampaigns } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
-import { Mail, Plus, Send, Clock, Pause, LayoutTemplate, RefreshCw } from "lucide-react";
+import { Mail, Plus, Send, Clock, Pause, LayoutTemplate, RefreshCw, X, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { sendCampaignViaSendGrid, sendCampaignViaResend } from "@/lib/integrations-api";
 
 const PROJECT_ID = 1;
+
+interface SendDialogState {
+  campaignId: number;
+  campaignName: string;
+  provider: 'sendgrid' | 'resend';
+}
 
 export default function EmailCampaigns() {
   const { data: campaigns, isLoading, refetch } = useListEmailCampaigns({ projectId: PROJECT_ID });
   const { toast } = useToast();
   const [sendingId, setSendingId] = useState<number | null>(null);
   const [sendProvider, setSendProvider] = useState<'sendgrid' | 'resend'>('sendgrid');
+  const [sendDialog, setSendDialog] = useState<SendDialogState | null>(null);
+  const [recipientsInput, setRecipientsInput] = useState('');
 
   if (isLoading) return <PageLoader />;
 
@@ -24,15 +32,38 @@ export default function EmailCampaigns() {
     }
   };
 
-  const handleSendCampaign = async (campaignId: number, campaignName: string) => {
-    setSendingId(campaignId);
+  const openSendDialog = (campaignId: number, campaignName: string) => {
+    setSendDialog({ campaignId, campaignName, provider: sendProvider });
+    setRecipientsInput('');
+  };
+
+  const closeSendDialog = () => {
+    setSendDialog(null);
+    setRecipientsInput('');
+  };
+
+  const handleConfirmSend = async () => {
+    if (!sendDialog) return;
+
+    const emails = recipientsInput
+      .split(/[,\n]+/)
+      .map(e => e.trim())
+      .filter(e => e.includes('@'));
+
+    if (emails.length === 0) {
+      toast({ title: "No recipients", description: "Enter at least one valid email address.", variant: "destructive" });
+      return;
+    }
+
+    closeSendDialog();
+    setSendingId(sendDialog.campaignId);
     try {
-      const fn = sendProvider === 'sendgrid' ? sendCampaignViaSendGrid : sendCampaignViaResend;
-      const result = await fn(campaignId);
+      const fn = sendDialog.provider === 'sendgrid' ? sendCampaignViaSendGrid : sendCampaignViaResend;
+      const result = await fn(sendDialog.campaignId, emails);
       if (result.success) {
         toast({
           title: "Campaign sent!",
-          description: `"${campaignName}" was sent successfully via ${sendProvider === 'sendgrid' ? 'SendGrid' : 'Resend'}.`,
+          description: `"${sendDialog.campaignName}" was sent to ${emails.length} recipient${emails.length > 1 ? 's' : ''} via ${sendDialog.provider === 'sendgrid' ? 'SendGrid' : 'Resend'}.`,
         });
         refetch();
       } else {
@@ -111,7 +142,7 @@ export default function EmailCampaigns() {
 
               {campaign.status !== 'sent' && (
                 <button
-                  onClick={() => handleSendCampaign(campaign.id, campaign.name)}
+                  onClick={() => openSendDialog(campaign.id, campaign.name)}
                   disabled={isSending}
                   className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
                 >
@@ -126,6 +157,59 @@ export default function EmailCampaigns() {
           );
         })}
       </div>
+
+      {sendDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-panel rounded-2xl border border-slate-700 w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                <h3 className="text-lg font-bold text-white">Add Recipients</h3>
+              </div>
+              <button onClick={closeSendDialog} className="text-slate-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-slate-400 mb-1">
+              Sending <span className="text-white font-medium">"{sendDialog.campaignName}"</span> via{' '}
+              <span className="text-primary font-medium">{sendDialog.provider === 'sendgrid' ? 'SendGrid' : 'Resend'}</span>
+            </p>
+            <p className="text-xs text-slate-500 mb-4">Enter recipient email addresses separated by commas or new lines.</p>
+
+            <textarea
+              value={recipientsInput}
+              onChange={e => setRecipientsInput(e.target.value)}
+              placeholder="alice@example.com, bob@example.com&#10;carol@example.com"
+              rows={5}
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-primary/60 resize-none font-mono"
+              autoFocus
+            />
+
+            <div className="flex items-center justify-between mt-1 mb-4">
+              <span className="text-xs text-slate-500">
+                {recipientsInput.split(/[,\n]+/).filter(e => e.trim().includes('@')).length} recipient(s) detected
+              </span>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={closeSendDialog}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSend}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                Send Campaign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

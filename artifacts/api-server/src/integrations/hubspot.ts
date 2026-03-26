@@ -5,7 +5,6 @@ interface HubSpotContact {
   firstName?: string;
   lastName?: string;
   company?: string;
-  phone?: string;
   leadScore?: number;
   source?: string;
 }
@@ -17,8 +16,8 @@ export async function syncLeadToHubSpot(lead: HubSpotContact): Promise<{ success
   }
 
   const token = settings.settings.access_token;
-  const [firstName = '', ...rest] = (lead.firstName ? [lead.firstName] : lead.email.split('@')[0].split('.'));
-  const lastName = lead.lastName ?? rest.join(' ') ?? '';
+  const firstName = lead.firstName ?? lead.email.split('@')[0];
+  const lastName = lead.lastName ?? '';
 
   const properties: Record<string, string> = {
     email: lead.email,
@@ -26,7 +25,6 @@ export async function syncLeadToHubSpot(lead: HubSpotContact): Promise<{ success
     lastname: lastName,
   };
   if (lead.company) properties.company = lead.company;
-  if (lead.phone) properties.phone = lead.phone;
   if (lead.source) properties.lead_source = lead.source;
 
   const res = await fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
@@ -39,17 +37,28 @@ export async function syncLeadToHubSpot(lead: HubSpotContact): Promise<{ success
   });
 
   if (res.status === 409) {
-    const searchRes = await fetch(
-      `https://api.hubapi.com/crm/v3/objects/contacts/search`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ filterGroups: [{ filters: [{ propertyName: 'email', operator: 'EQ', value: lead.email }] }] }),
-      }
-    );
+    const searchRes = await fetch('https://api.hubapi.com/crm/v3/objects/contacts/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        filterGroups: [{ filters: [{ propertyName: 'email', operator: 'EQ', value: lead.email }] }],
+      }),
+    });
     const searchData = await searchRes.json() as { results?: Array<{ id: string }> };
     const existing = searchData.results?.[0];
+
     if (existing) {
+      const patchRes = await fetch(`https://api.hubapi.com/crm/v3/objects/contacts/${existing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ properties }),
+      });
+
+      if (!patchRes.ok) {
+        const err = await patchRes.text();
+        return { success: false, error: `HubSpot update error: ${err}` };
+      }
+
       return { success: true, contactId: existing.id };
     }
   }

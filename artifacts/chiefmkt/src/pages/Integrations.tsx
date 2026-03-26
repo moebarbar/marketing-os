@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchIntegrationStatuses } from "@/lib/integrations-api";
-import { Plug, CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertCircle, LogOut } from "lucide-react";
+import { Plug, CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertCircle, LogOut, Copy, Check, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -14,6 +14,7 @@ const INTEGRATIONS = [
     icon: "🟠",
     category: "CRM",
     docs: "https://developers.hubspot.com",
+    connectPrompt: "Please connect HubSpot to ChiefMKT so I can sync leads automatically.",
   },
   {
     id: "sendgrid",
@@ -22,6 +23,7 @@ const INTEGRATIONS = [
     icon: "🔵",
     category: "Email",
     docs: "https://sendgrid.com/docs",
+    connectPrompt: "Please connect SendGrid to ChiefMKT so I can send email campaigns.",
   },
   {
     id: "resend",
@@ -30,6 +32,7 @@ const INTEGRATIONS = [
     icon: "⚫",
     category: "Email",
     docs: "https://resend.com/docs",
+    connectPrompt: "Please connect Resend to ChiefMKT so I can send transactional emails.",
   },
   {
     id: "slack",
@@ -38,6 +41,7 @@ const INTEGRATIONS = [
     icon: "💬",
     category: "Notifications",
     docs: "https://api.slack.com",
+    connectPrompt: "Please connect Slack to ChiefMKT so I can receive lead and campaign alerts.",
   },
   {
     id: "google-sheet",
@@ -46,6 +50,7 @@ const INTEGRATIONS = [
     icon: "🟢",
     category: "Export",
     docs: "https://developers.google.com/sheets",
+    connectPrompt: "Please connect Google Sheets to ChiefMKT so I can export analytics and lead data.",
   },
   {
     id: "google-drive",
@@ -54,6 +59,7 @@ const INTEGRATIONS = [
     icon: "🟡",
     category: "Storage",
     docs: "https://developers.google.com/drive",
+    connectPrompt: "Please connect Google Drive to ChiefMKT so I can save SEO reports.",
   },
   {
     id: "notion",
@@ -62,6 +68,7 @@ const INTEGRATIONS = [
     icon: "⬛",
     category: "CMS",
     docs: "https://developers.notion.com",
+    connectPrompt: "Please connect Notion to ChiefMKT so I can push generated content for review.",
   },
   {
     id: "box",
@@ -70,13 +77,18 @@ const INTEGRATIONS = [
     icon: "🔷",
     category: "Storage",
     docs: "https://developer.box.com",
+    connectPrompt: "Please connect Box to ChiefMKT so I can archive reports to cloud storage.",
   },
 ];
+
+type Integration = (typeof INTEGRATIONS)[0];
 
 export default function Integrations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>("All");
+  const [connectTarget, setConnectTarget] = useState<Integration | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { data: statuses, isLoading, isFetching } = useQuery({
     queryKey: ["integration-statuses"],
@@ -95,27 +107,18 @@ export default function Integrations() {
     queryClient.invalidateQueries({ queryKey: ["integration-statuses"] });
   };
 
-  const handleConnect = async (service: string, name: string) => {
-    queryClient.setQueryData<Record<string, boolean>>(["integration-statuses"], (old) => ({
-      ...(old ?? {}),
-      [service]: false,
-    }));
-
-    const res = await fetch(`${BASE}/api/integrations/connect/${service}`, { method: "POST" });
+  const handleConnect = async (integration: Integration) => {
+    const res = await fetch(`${BASE}/api/integrations/connect/${integration.id}`, { method: "POST" });
     const data = await res.json() as { connected: boolean; message?: string };
 
     if (data.connected) {
       queryClient.setQueryData<Record<string, boolean>>(["integration-statuses"], (old) => ({
         ...(old ?? {}),
-        [service]: true,
+        [integration.id]: true,
       }));
-      toast({ title: `${name} connected`, description: "Integration is active and ready to use." });
+      toast({ title: `${integration.name} connected`, description: "Integration is active and ready to use." });
     } else {
-      toast({
-        title: `${name} not yet authorized`,
-        description: data.message ?? `Ask the AI assistant to connect ${name} to authorize it.`,
-        variant: "destructive",
-      });
+      setConnectTarget(integration);
     }
   };
 
@@ -126,6 +129,13 @@ export default function Integrations() {
       [service]: false,
     }));
     toast({ title: `${name} disconnected`, description: "Integration has been disabled." });
+  };
+
+  const handleCopyPrompt = async () => {
+    if (!connectTarget) return;
+    await navigator.clipboard.writeText(connectTarget.connectPrompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -196,7 +206,7 @@ export default function Integrations() {
                 key={integration.id}
                 integration={integration}
                 connected={connected}
-                onConnect={() => handleConnect(integration.id, integration.name)}
+                onConnect={() => handleConnect(integration)}
                 onDisconnect={() => handleDisconnect(integration.id, integration.name)}
               />
             );
@@ -210,14 +220,63 @@ export default function Integrations() {
           <div>
             <h3 className="font-bold text-white mb-1">How to connect an integration</h3>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Integrations use Replit's secure OAuth system. To authorize a new service, ask the AI assistant:{" "}
-              <span className="text-primary font-medium">"Connect my [service] integration"</span>.
-              Once authorized, clicking <span className="text-primary font-medium">Connect</span> on any card will activate it instantly. 
-              Click <span className="text-amber-400 font-medium">Disconnect</span> to disable any active integration.
+              Click <span className="text-primary font-medium">Connect</span> on any card to check its authorization status.
+              If not yet authorized, a dialog will appear with a ready-made prompt you can paste into the AI assistant to authorize it via OAuth.
+              Once authorized, click <span className="text-primary font-medium">Connect</span> again to activate the integration instantly.
             </p>
           </div>
         </div>
       </div>
+
+      {connectTarget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-panel rounded-2xl border border-slate-700 w-full max-w-md p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-3xl">{connectTarget.icon}</span>
+              <div>
+                <h3 className="text-lg font-bold text-white">Connect {connectTarget.name}</h3>
+                <p className="text-xs text-slate-400">{connectTarget.category}</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4">
+              <div className="flex items-start gap-2">
+                <Zap className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-300">
+                  {connectTarget.name} requires OAuth authorization. Copy the prompt below and paste it into the AI assistant chat to authorize.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 mb-4">
+              <p className="text-sm text-slate-200 font-mono leading-relaxed">{connectTarget.connectPrompt}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConnectTarget(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCopyPrompt}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                {copied ? (
+                  <><Check className="w-4 h-4" /> Copied!</>
+                ) : (
+                  <><Copy className="w-4 h-4" /> Copy Prompt</>
+                )}
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 text-center mt-3">
+              After authorizing, click <span className="text-primary">Connect</span> again on the card to activate.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -228,10 +287,10 @@ function IntegrationCard({
   onConnect,
   onDisconnect,
 }: {
-  integration: (typeof INTEGRATIONS)[0];
+  integration: Integration;
   connected: boolean;
-  onConnect: () => void;
-  onDisconnect: () => void;
+  onConnect: () => void | Promise<void>;
+  onDisconnect: () => void | Promise<void>;
 }) {
   const [loading, setLoading] = useState(false);
 

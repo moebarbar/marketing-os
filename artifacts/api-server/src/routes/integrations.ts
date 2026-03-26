@@ -93,10 +93,12 @@ router.post("/integrations/sendgrid/send-campaign", async (req, res) => {
   const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-  const recipientList: string[] = Array.isArray(to) && to.length > 0 ? to : ['test@example.com'];
+  if (!Array.isArray(to) || to.length === 0) {
+    return res.status(400).json({ success: false, error: "At least one recipient email address is required." });
+  }
 
   const result = await sendCampaignViaSendGrid({
-    to: recipientList,
+    to,
     subject: campaign.subject,
     body: campaign.body,
   });
@@ -118,10 +120,12 @@ router.post("/integrations/resend/send-campaign", async (req, res) => {
   const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-  const recipientList: string[] = Array.isArray(to) && to.length > 0 ? to : ['test@example.com'];
+  if (!Array.isArray(to) || to.length === 0) {
+    return res.status(400).json({ success: false, error: "At least one recipient email address is required." });
+  }
 
   const result = await sendCampaignViaResend({
-    to: recipientList,
+    to,
     subject: campaign.subject,
     body: campaign.body,
   });
