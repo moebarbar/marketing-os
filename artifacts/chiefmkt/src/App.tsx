@@ -17,6 +17,9 @@ import EmailCampaigns from "@/pages/EmailCampaigns";
 import SocialMedia from "@/pages/SocialMedia";
 import Competitors from "@/pages/Competitors";
 import ChatWidget from "@/pages/ChatWidget";
+import Integrations from "@/pages/Integrations";
+import Pricing from "@/pages/Pricing";
+import Billing from "@/pages/Billing";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +47,9 @@ function Router() {
         <Route path="/social" component={SocialMedia} />
         <Route path="/competitors" component={Competitors} />
         <Route path="/chat-widget" component={ChatWidget} />
+        <Route path="/integrations" component={Integrations} />
+        <Route path="/pricing" component={Pricing} />
+        <Route path="/billing" component={Billing} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

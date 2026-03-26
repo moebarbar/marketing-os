@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useGenerateContent, useGetContentHistory, ContentGenerateRequestType, ContentGenerateRequestTone } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
-import { Sparkles, Copy, Check, Clock, History } from "lucide-react";
+import { Sparkles, Copy, Check, Clock, History, BookOpen, Box, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
+import { useToast } from "@/hooks/use-toast";
+import { pushContentToNotion, uploadToBox } from "@/lib/integrations-api";
 
 const PROJECT_ID = 1;
 
@@ -11,15 +13,21 @@ export default function ContentGenerator() {
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState<ContentGenerateRequestTone>('professional');
   const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+  const [pushingNotion, setPushingNotion] = useState(false);
+  const [uploadingBox, setUploadingBox] = useState(false);
+  const [lastContentId, setLastContentId] = useState<number | null>(null);
   
   const { mutate: generate, isPending, data: result } = useGenerateContent();
-  const { data: history } = useGetContentHistory({ projectId: PROJECT_ID });
+  const { data: history, refetch: refetchHistory } = useGetContentHistory({ projectId: PROJECT_ID });
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!topic) return;
-    generate({ data: { type, topic, tone, projectId: PROJECT_ID } });
-    setCopied(false);
+    generate(
+      { data: { type, topic, tone, projectId: PROJECT_ID } },
+      { onSuccess: (data) => { setLastContentId(data.id ?? null); setCopied(false); refetchHistory(); } }
+    );
   };
 
   const handleCopy = () => {
@@ -27,6 +35,50 @@ export default function ContentGenerator() {
       navigator.clipboard.writeText(result.content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handlePushNotion = async (contentId?: number) => {
+    const id = contentId ?? lastContentId;
+    if (!id) {
+      toast({ title: "No content", description: "Generate content first.", variant: "destructive" });
+      return;
+    }
+    setPushingNotion(true);
+    try {
+      const res = await pushContentToNotion(id);
+      if (res.success) {
+        toast({ title: "Pushed to Notion", description: "Content page created in your Notion database." });
+        if (res.pageUrl) window.open(res.pageUrl, '_blank');
+      } else {
+        toast({ title: "Push failed", description: res.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Push failed", description: "Could not connect to Notion.", variant: "destructive" });
+    } finally {
+      setPushingNotion(false);
+    }
+  };
+
+  const handleUploadBox = async (contentId?: number) => {
+    const id = contentId ?? lastContentId;
+    if (!id) {
+      toast({ title: "No content", description: "Generate content first.", variant: "destructive" });
+      return;
+    }
+    setUploadingBox(true);
+    try {
+      const res = await uploadToBox({ contentId: id });
+      if (res.success) {
+        toast({ title: "Uploaded to Box", description: "Content uploaded to your Box account." });
+        if (res.fileUrl) window.open(res.fileUrl, '_blank');
+      } else {
+        toast({ title: "Upload failed", description: res.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Upload failed", description: "Could not connect to Box.", variant: "destructive" });
+    } finally {
+      setUploadingBox(false);
     }
   };
 
@@ -41,14 +93,13 @@ export default function ContentGenerator() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Generator Form */}
         <div className="lg:col-span-1 space-y-6">
           <form onSubmit={handleGenerate} className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-5">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Content Type</label>
               <select 
                 value={type} 
-                onChange={(e) => setType(e.target.value as any)}
+                onChange={(e) => setType(e.target.value as ContentGenerateRequestType)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
               >
                 <option value="blog_post">Blog Post</option>
@@ -78,7 +129,7 @@ export default function ContentGenerator() {
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setTone(t as any)}
+                    onClick={() => setTone(t as ContentGenerateRequestTone)}
                     className={`px-3 py-2 text-sm rounded-lg border capitalize transition-all ${
                       tone === t 
                         ? 'bg-primary/20 border-primary text-primary font-medium' 
@@ -109,7 +160,6 @@ export default function ContentGenerator() {
             </button>
           </form>
 
-          {/* History miniview */}
           {history && history.length > 0 && (
             <div className="glass-panel p-5 rounded-2xl border border-slate-800">
               <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
@@ -117,11 +167,25 @@ export default function ContentGenerator() {
               </h3>
               <div className="space-y-3">
                 {history.slice(0, 4).map(item => (
-                  <div key={item.id} className="text-sm pb-3 border-b border-slate-800/50 last:border-0 last:pb-0 cursor-pointer hover:text-primary transition-colors">
-                    <div className="text-slate-300 font-medium truncate">{item.title}</div>
+                  <div key={item.id} className="text-sm pb-3 border-b border-slate-800/50 last:border-0 last:pb-0 group">
+                    <div className="text-slate-300 font-medium truncate cursor-pointer hover:text-primary transition-colors">{item.title}</div>
                     <div className="flex justify-between items-center mt-1 text-xs text-slate-500">
                       <span className="capitalize">{item.type.replace('_', ' ')}</span>
                       <span><Clock className="inline w-3 h-3 mr-1" />{new Date(item.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handlePushNotion(item.id)}
+                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                      >
+                        <BookOpen className="w-3 h-3" /> Notion
+                      </button>
+                      <button
+                        onClick={() => handleUploadBox(item.id)}
+                        className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                      >
+                        <Box className="w-3 h-3" /> Box
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -130,7 +194,6 @@ export default function ContentGenerator() {
           )}
         </div>
 
-        {/* Results Area */}
         <div className="lg:col-span-2">
           {isPending ? (
              <div className="h-[600px] glass-panel rounded-2xl border border-slate-800 flex items-center justify-center">
@@ -149,21 +212,38 @@ export default function ContentGenerator() {
               animate={{ opacity: 1, scale: 1 }}
               className="h-full min-h-[600px] glass-panel rounded-2xl border border-slate-800 flex flex-col overflow-hidden"
             >
-              <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+              <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center flex-wrap gap-2">
                 <div>
                   <h3 className="font-bold text-white">{result.title}</h3>
                   <div className="text-xs text-slate-400 mt-0.5">{result.wordCount} words • SEO Score: <span className="text-emerald-400 font-medium">{result.seoScore}/100</span></div>
                 </div>
-                <button 
-                  onClick={handleCopy}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
-                >
-                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                  {copied ? 'Copied!' : 'Copy Text'}
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handlePushNotion()}
+                    disabled={pushingNotion}
+                    className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50"
+                  >
+                    {pushingNotion ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+                    Notion
+                  </button>
+                  <button 
+                    onClick={() => handleUploadBox()}
+                    disabled={uploadingBox}
+                    className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-sm transition-colors disabled:opacity-50"
+                  >
+                    {uploadingBox ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Box className="w-4 h-4" />}
+                    Box
+                  </button>
+                  <button 
+                    onClick={handleCopy}
+                    className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
               </div>
               <div className="p-6 flex-1 overflow-y-auto prose prose-invert max-w-none">
-                {/* Simulated markdown rendering since we receive raw text */}
                 <div className="whitespace-pre-wrap text-slate-300 leading-relaxed font-sans text-[15px]">
                   {result.content}
                 </div>

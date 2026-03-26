@@ -13,6 +13,8 @@ import emailCampaignsRouter from "./email-campaigns";
 import socialRouter from "./social";
 import competitorsRouter from "./competitors";
 import chatWidgetRouter from "./chat-widget";
+import integrationsRouter from "./integrations";
+import stripeRouter from "./stripe";
 
 const router: IRouter = Router();
 
@@ -30,5 +32,7 @@ router.use(emailCampaignsRouter);
 router.use(socialRouter);
 router.use(competitorsRouter);
 router.use(chatWidgetRouter);
+router.use(integrationsRouter);
+router.use(stripeRouter);
 
 export default router;

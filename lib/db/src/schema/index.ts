@@ -8,3 +8,4 @@ export * from "./competitors";
 export * from "./content-history";
 export * from "./funnels";
 export * from "./chat-widget";
+export * from "./subscriptions";

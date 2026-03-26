@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { useListLeads } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
-import { Users, Search, Download, Filter } from "lucide-react";
+import { Users, Search, Download, Filter, RefreshCw, Sheet } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { syncLeadToHubSpot, exportToSheets } from "@/lib/integrations-api";
 
 const PROJECT_ID = 1;
 
 export default function Leads() {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useListLeads({ projectId: PROJECT_ID, page, limit: 10 });
+  const { toast } = useToast();
+  const [syncingLeadId, setSyncingLeadId] = useState<number | null>(null);
+  const [exportingSheets, setExportingSheets] = useState(false);
 
   if (isLoading) return <PageLoader />;
 
@@ -19,6 +24,44 @@ export default function Leads() {
       case 'converted': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       case 'lost': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
       default: return 'bg-slate-800 text-slate-400';
+    }
+  };
+
+  const handleSyncHubSpot = async (leadId: number, leadName: string) => {
+    setSyncingLeadId(leadId);
+    try {
+      const result = await syncLeadToHubSpot(leadId);
+      if (result.success) {
+        toast({ title: "Synced to HubSpot", description: `${leadName} has been synced as a HubSpot contact.` });
+      } else {
+        toast({ title: "Sync failed", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Sync failed", description: "Could not reach HubSpot. Check your connection.", variant: "destructive" });
+    } finally {
+      setSyncingLeadId(null);
+    }
+  };
+
+  const handleExportSheets = async () => {
+    setExportingSheets(true);
+    try {
+      const result = await exportToSheets('leads', PROJECT_ID);
+      if (result.success) {
+        toast({
+          title: "Exported to Google Sheets",
+          description: result.spreadsheetUrl
+            ? `Spreadsheet ready. Opening...`
+            : "Export successful.",
+        });
+        if (result.spreadsheetUrl) window.open(result.spreadsheetUrl, '_blank');
+      } else {
+        toast({ title: "Export failed", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Export failed", description: "Could not export data.", variant: "destructive" });
+    } finally {
+      setExportingSheets(false);
     }
   };
 
@@ -36,8 +79,16 @@ export default function Leads() {
           <button className="flex items-center gap-2 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
             <Filter className="w-4 h-4" /> Filter
           </button>
+          <button
+            onClick={handleExportSheets}
+            disabled={exportingSheets}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-emerald-900/30"
+          >
+            {exportingSheets ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sheet className="w-4 h-4" />}
+            Export to Sheets
+          </button>
           <button className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-primary/25">
-            <Download className="w-4 h-4" /> Export
+            <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
       </div>
@@ -67,6 +118,7 @@ export default function Leads() {
                 <th className="px-6 py-4 font-semibold">Score</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold text-right">Date</th>
+                <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
@@ -96,6 +148,15 @@ export default function Leads() {
                   </td>
                   <td className="px-6 py-4 text-right text-slate-500">
                     {new Date(lead.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSyncHubSpot(lead.id, lead.name || lead.email); }}
+                      disabled={syncingLeadId === lead.id}
+                      className="opacity-0 group-hover:opacity-100 text-xs bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 px-2.5 py-1 rounded-lg transition-all disabled:opacity-30"
+                    >
+                      {syncingLeadId === lead.id ? "Syncing..." : "→ HubSpot"}
+                    </button>
                   </td>
                 </tr>
               ))}

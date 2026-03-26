@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { useListAbTests } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
-import { SplitSquareHorizontal, Plus, Trophy, Activity, CheckCircle2, PauseCircle } from "lucide-react";
+import { SplitSquareHorizontal, Plus, Trophy, Activity, CheckCircle2, PauseCircle, Bell, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { notifySlack } from "@/lib/integrations-api";
 
 const PROJECT_ID = 1;
 
 export default function AbTesting() {
   const { data: tests, isLoading } = useListAbTests({ projectId: PROJECT_ID });
+  const { toast } = useToast();
+  const [notifyingId, setNotifyingId] = useState<number | null>(null);
 
   if (isLoading) return <PageLoader />;
 
@@ -15,6 +20,26 @@ export default function AbTesting() {
       case 'completed': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
       case 'paused': return <PauseCircle className="w-4 h-4 text-amber-500" />;
       default: return null;
+    }
+  };
+
+  const handleNotifySlack = async (test: { id: number; name: string; winner: string | null | undefined; confidence: number }) => {
+    setNotifyingId(test.id);
+    try {
+      const result = await notifySlack({
+        testName: test.name,
+        winner: test.winner ?? 'variant',
+        confidence: test.confidence,
+      });
+      if (result.success) {
+        toast({ title: "Slack notified!", description: `Results for "${test.name}" posted to Slack.` });
+      } else {
+        toast({ title: "Notify failed", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Notify failed", description: "Could not reach Slack.", variant: "destructive" });
+    } finally {
+      setNotifyingId(null);
     }
   };
 
@@ -47,18 +72,28 @@ export default function AbTesting() {
                   {getStatusIcon(test.status)} {test.status}
                 </span>
               </div>
-              <div className="text-sm text-slate-500">
-                Confidence: <strong className={test.confidence > 90 ? 'text-emerald-400' : 'text-amber-400'}>{test.confidence}%</strong>
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-slate-500">
+                  Confidence: <strong className={test.confidence > 90 ? 'text-emerald-400' : 'text-amber-400'}>{test.confidence}%</strong>
+                </div>
+                {test.status === 'completed' && (
+                  <button
+                    onClick={() => handleNotifySlack({ id: test.id, name: test.name, winner: test.winner, confidence: test.confidence })}
+                    disabled={notifyingId === test.id}
+                    className="flex items-center gap-1.5 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {notifyingId === test.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />}
+                    Notify Slack
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 relative">
-              {/* VS Divider */}
               <div className="hidden md:flex absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-px bg-slate-800 items-center justify-center">
                 <div className="bg-slate-900 border border-slate-800 text-slate-500 text-xs font-bold px-2 py-1 rounded-full">VS</div>
               </div>
 
-              {/* Control */}
               <div className={`p-4 rounded-xl border ${test.winner === 'control' ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-800 bg-slate-900/50'}`}>
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-semibold text-slate-300 flex items-center gap-2">
@@ -80,7 +115,6 @@ export default function AbTesting() {
                 </div>
               </div>
 
-              {/* Variant */}
               <div className={`p-4 rounded-xl border ${test.winner === 'variant' ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-800 bg-slate-900/50'}`}>
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-semibold text-slate-300 flex items-center gap-2">

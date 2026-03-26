@@ -2,9 +2,13 @@ import { Link, useLocation } from "wouter";
 import { 
   LayoutDashboard, BarChart3, LineChart, Search, 
   PenTool, Filter, SplitSquareHorizontal, Users, 
-  Mail, Share2, Target, MessageSquare, Zap
+  Mail, Share2, Target, MessageSquare, Zap, Plug,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -19,10 +23,28 @@ const NAV_ITEMS = [
   { icon: Share2, label: "Social", href: "/social" },
   { icon: LineChart, label: "Competitors", href: "/competitors" },
   { icon: MessageSquare, label: "Chat Widget", href: "/chat-widget" },
+  { icon: Plug, label: "Integrations", href: "/integrations" },
+  { icon: CreditCard, label: "Billing", href: "/billing" },
 ];
+
+const PLAN_LABELS: Record<string, { label: string; color: string }> = {
+  starter: { label: "Starter Plan", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
+  pro: { label: "Pro Plan", color: "text-violet-400 bg-violet-500/10 border-violet-500/20" },
+  agency: { label: "Agency Plan", color: "text-amber-400 bg-amber-500/10 border-amber-500/20" },
+};
 
 export function Sidebar() {
   const [location] = useLocation();
+  const [plan, setPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/stripe/subscription?projectId=1`)
+      .then((r) => r.json())
+      .then((data) => { if (data?.plan) setPlan(data.plan); })
+      .catch(() => {});
+  }, []);
+
+  const planMeta = plan ? PLAN_LABELS[plan] : null;
 
   return (
     <aside className="w-64 flex-shrink-0 h-screen sticky top-0 border-r border-card-border bg-card/40 backdrop-blur-xl hidden md:flex flex-col">
@@ -61,7 +83,13 @@ export function Sidebar() {
         })}
       </div>
 
-      <div className="p-4 border-t border-card-border">
+      <div className="p-4 border-t border-card-border space-y-3">
+        {planMeta && (
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold ${planMeta.color}`}>
+            <CreditCard className="w-3.5 h-3.5" />
+            {planMeta.label}
+          </div>
+        )}
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-4 border border-slate-700/50 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full blur-xl animate-pulse" />
           <div className="flex items-center gap-3">

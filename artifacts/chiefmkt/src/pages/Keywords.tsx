@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useResearchKeywords, useGetSavedKeywords } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
-import { Search, TrendingUp, ArrowRight, Bookmark, Download } from "lucide-react";
+import { Search, TrendingUp, ArrowRight, Bookmark, Download, Sheet, RefreshCw } from "lucide-react";
 import { formatNumber, formatCurrency } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { exportToSheets } from "@/lib/integrations-api";
 
 const PROJECT_ID = 1;
 
@@ -10,11 +12,30 @@ export default function Keywords() {
   const [topic, setTopic] = useState("");
   const { mutate: research, isPending, data: results } = useResearchKeywords();
   const { data: saved, isLoading: savedLoading } = useGetSavedKeywords({ projectId: PROJECT_ID });
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!topic) return;
     research({ data: { topic, projectId: PROJECT_ID, country: 'US' } });
+  };
+
+  const handleExportSheets = async () => {
+    setExporting(true);
+    try {
+      const result = await exportToSheets('keywords', PROJECT_ID);
+      if (result.success) {
+        toast({ title: "Exported to Google Sheets", description: "Keyword data exported successfully." });
+        if (result.spreadsheetUrl) window.open(result.spreadsheetUrl, '_blank');
+      } else {
+        toast({ title: "Export failed", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Export failed", description: "Could not export keywords.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -24,9 +45,19 @@ export default function Keywords() {
           <h1 className="text-3xl font-display font-bold text-white">Keyword Research</h1>
           <p className="text-slate-400 mt-1">Discover high-intent keywords for your next campaign.</p>
         </div>
-        <button className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors">
-          <Download className="w-4 h-4" /> Export CSV
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportSheets}
+            disabled={exporting}
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-emerald-900/30"
+          >
+            {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sheet className="w-4 h-4" />}
+            Export to Sheets
+          </button>
+          <button className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors">
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="glass-panel p-2 rounded-2xl flex items-center bg-slate-900 border border-slate-800 max-w-3xl">

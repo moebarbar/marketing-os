@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { useGetAnalyticsOverview, useGetTopPages, useGetTrafficSources } from "@workspace/api-client-react";
 import { PageLoader, ErrorState } from "@/components/ui/loading-states";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { Sheet, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { exportToSheets } from "@/lib/integrations-api";
 
 const PROJECT_ID = 1;
 const COLORS = ['hsl(var(--primary))', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
@@ -9,15 +13,44 @@ export default function Analytics() {
   const { data: overview, isLoading: overviewLoading } = useGetAnalyticsOverview({ projectId: PROJECT_ID, period: '30d' });
   const { data: topPages, isLoading: pagesLoading } = useGetTopPages({ projectId: PROJECT_ID, limit: 5 });
   const { data: sources, isLoading: sourcesLoading } = useGetTrafficSources({ projectId: PROJECT_ID });
+  const { toast } = useToast();
+  const [exporting, setExporting] = useState(false);
 
   if (overviewLoading || pagesLoading || sourcesLoading) return <PageLoader />;
   if (!overview || !topPages || !sources) return <ErrorState />;
 
+  const handleExportSheets = async () => {
+    setExporting(true);
+    try {
+      const result = await exportToSheets('analytics', PROJECT_ID);
+      if (result.success) {
+        toast({ title: "Exported to Google Sheets", description: "Analytics data exported successfully." });
+        if (result.spreadsheetUrl) window.open(result.spreadsheetUrl, '_blank');
+      } else {
+        toast({ title: "Export failed", description: result.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Export failed", description: "Could not export analytics.", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-12">
-      <div>
-        <h1 className="text-3xl font-display font-bold text-white">Analytics</h1>
-        <p className="text-slate-400 mt-1">Deep dive into your website performance.</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-white">Analytics</h1>
+          <p className="text-slate-400 mt-1">Deep dive into your website performance.</p>
+        </div>
+        <button
+          onClick={handleExportSheets}
+          disabled={exporting}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-emerald-900/30"
+        >
+          {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sheet className="w-4 h-4" />}
+          Export to Sheets
+        </button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
