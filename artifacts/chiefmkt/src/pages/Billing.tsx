@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CreditCard, Calendar, CheckCircle2, AlertCircle, ExternalLink, ArrowUpRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useSearch } from "wouter";
 
 const PROJECT_ID = 1;
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -25,7 +25,7 @@ export default function Billing() {
   const [sub, setSub] = useState<Subscription | null | undefined>(undefined);
   const [portalLoading, setPortalLoading] = useState(false);
   const { toast } = useToast();
-  const [location] = useLocation();
+  const search = useSearch();
 
   useEffect(() => {
     fetch(`${BASE}/api/stripe/subscription?projectId=${PROJECT_ID}`)
@@ -35,10 +35,10 @@ export default function Billing() {
   }, []);
 
   useEffect(() => {
-    if (location.includes("success=true")) {
+    if (new URLSearchParams(search).get("success") === "true") {
       toast({ title: "Subscription activated!", description: "Welcome to ChiefMKT. Your plan is now active." });
     }
-  }, [location, toast]);
+  }, [search, toast]);
 
   const handleManageBilling = async () => {
     setPortalLoading(true);
