@@ -94,7 +94,7 @@ Backend integration clients live in `artifacts/api-server/src/integrations/`. Ea
 - Google Drive: `connector:ccfg_google-drive_0F6D7EF5E22543468DB221F94F`
 - Notion: `connector:ccfg_notion_01K49R392Z3CSNMXCPWSV67AF4`
 - Box: `connector:ccfg_box_84EBA40EEC8147A387E0805587`
-- Stripe: `connector:ccfg_stripe_01K611P4YQR0SZM11XFRQJC44Y`
+- Stripe: `connector:ccfg_stripe_01K611P4YQR0SZM11XFRQJC44Y` — **NOTE: Integration was dismissed by user. To enable billing, either re-authorize via the Stripe connector, or set `STRIPE_SECRET_KEY` as a secret environment variable.**
 
 ## Stripe Billing
 
