@@ -1,8 +1,34 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import projectsRouter from "./projects";
+import dashboardRouter from "./dashboard";
+import analyticsRouter from "./analytics";
+import seoRouter from "./seo";
+import keywordsRouter from "./keywords";
+import contentRouter from "./content";
+import funnelsRouter from "./funnels";
+import abTestsRouter from "./ab-tests";
+import leadsRouter from "./leads";
+import emailCampaignsRouter from "./email-campaigns";
+import socialRouter from "./social";
+import competitorsRouter from "./competitors";
+import chatWidgetRouter from "./chat-widget";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(projectsRouter);
+router.use(dashboardRouter);
+router.use(analyticsRouter);
+router.use(seoRouter);
+router.use(keywordsRouter);
+router.use(contentRouter);
+router.use(funnelsRouter);
+router.use(abTestsRouter);
+router.use(leadsRouter);
+router.use(emailCampaignsRouter);
+router.use(socialRouter);
+router.use(competitorsRouter);
+router.use(chatWidgetRouter);
 
 export default router;

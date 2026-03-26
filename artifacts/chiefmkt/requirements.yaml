@@ -1,0 +1,23 @@
+packages:
+  "recharts": "For beautiful data visualization charts on dashboard and analytics"
+  "framer-motion": "For page transitions and smooth micro-interactions"
+  "date-fns": "For formatting dates nicely across the application"
+  "react-hook-form": "For robust form state management"
+  "@hookform/resolvers": "For Zod validation integration with forms"
+  "zod": "For form schema validation"
+  "clsx": "For conditional class names"
+  "tailwind-merge": "For merging tailwind classes safely"
+  "lucide-react": "For beautiful, consistent icons"
+
+images:
+  - path: "artifacts/chiefmkt/public/images/auth-bg.png"
+    description: "Abstract dark mode gradient mesh background with deep navy, electric blue, and subtle violet light leaks, very sleek and professional SaaS aesthetic"
+    aspect_ratio: "16:9"
+  - path: "artifacts/chiefmkt/public/images/ai-cmo.png"
+    description: "A futuristic glowing holographic brain or neural network icon on a dark transparent background, representing an AI marketing assistant"
+    aspect_ratio: "1:1"
+
+notes:
+  - The UI is designed as a forced dark mode to fit the "dark mode professional SaaS" requirement.
+  - Project ID is hardcoded to 1 for all API calls as a default.
+  - All hooks are imported from the workspace's generated API client.

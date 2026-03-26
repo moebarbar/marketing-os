@@ -1,22 +1,51 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ChiefMKT AI-powered digital marketing platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: dashboard
+    description: Dashboard & analytics
+  - name: tracking
+    description: Visitor tracking & events
+  - name: seo
+    description: SEO analysis
+  - name: keywords
+    description: Keyword research
+  - name: content
+    description: AI content generation
+  - name: analytics
+    description: Website analytics
+  - name: funnels
+    description: Funnel analysis
+  - name: ab-testing
+    description: A/B testing
+  - name: leads
+    description: Lead management
+  - name: email
+    description: Email campaigns
+  - name: social
+    description: Social media management
+  - name: competitors
+    description: Competitor analysis
+  - name: chat-widget
+    description: Chat widget management
+  - name: projects
+    description: Project management
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +53,618 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard/overview:
+    get:
+      operationId: getDashboardOverview
+      tags: [dashboard]
+      summary: Get dashboard overview metrics
+      responses:
+        "200":
+          description: Dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardOverview"
+
+  /dashboard/visitors:
+    get:
+      operationId: getDashboardVisitors
+      tags: [dashboard]
+      summary: Get visitor chart data
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        "200":
+          description: Visitor chart data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitorChartData"
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects/websites
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get project by ID
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{projectId}/tracking-snippet:
+    get:
+      operationId: getTrackingSnippet
+      tags: [tracking]
+      summary: Get JavaScript tracking snippet for project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tracking snippet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackingSnippet"
+
+  /analytics/overview:
+    get:
+      operationId: getAnalyticsOverview
+      tags: [analytics]
+      summary: Get analytics overview
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        "200":
+          description: Analytics overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsOverview"
+
+  /analytics/pages:
+    get:
+      operationId: getTopPages
+      tags: [analytics]
+      summary: Get top pages by traffic
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Top pages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PageAnalytics"
+
+  /analytics/sources:
+    get:
+      operationId: getTrafficSources
+      tags: [analytics]
+      summary: Get traffic sources breakdown
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Traffic sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrafficSource"
+
+  /seo/analyze:
+    post:
+      operationId: analyzeSeo
+      tags: [seo]
+      summary: Analyze a URL for SEO issues
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeoAnalyzeRequest"
+      responses:
+        "200":
+          description: SEO analysis results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeoAnalysis"
+
+  /seo/reports:
+    get:
+      operationId: listSeoReports
+      tags: [seo]
+      summary: List SEO reports
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: SEO reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SeoReport"
+
+  /keywords/research:
+    post:
+      operationId: researchKeywords
+      tags: [keywords]
+      summary: Research keywords for a topic
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KeywordResearchRequest"
+      responses:
+        "200":
+          description: Keyword research results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeywordResearchResult"
+
+  /keywords/saved:
+    get:
+      operationId: getSavedKeywords
+      tags: [keywords]
+      summary: Get saved keyword lists
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Saved keywords
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedKeyword"
+
+  /content/generate:
+    post:
+      operationId: generateContent
+      tags: [content]
+      summary: Generate AI content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentGenerateRequest"
+      responses:
+        "200":
+          description: Generated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedContent"
+
+  /content/history:
+    get:
+      operationId: getContentHistory
+      tags: [content]
+      summary: Get content generation history
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Content history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentHistoryItem"
+
+  /funnels:
+    get:
+      operationId: listFunnels
+      tags: [funnels]
+      summary: List funnels for a project
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Funnels list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Funnel"
+    post:
+      operationId: createFunnel
+      tags: [funnels]
+      summary: Create a new funnel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFunnelRequest"
+      responses:
+        "201":
+          description: Funnel created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Funnel"
+
+  /funnels/{funnelId}/data:
+    get:
+      operationId: getFunnelData
+      tags: [funnels]
+      summary: Get funnel analytics data
+      parameters:
+        - name: funnelId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Funnel data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunnelData"
+
+  /ab-tests:
+    get:
+      operationId: listAbTests
+      tags: [ab-testing]
+      summary: List A/B tests
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: A/B tests list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AbTest"
+    post:
+      operationId: createAbTest
+      tags: [ab-testing]
+      summary: Create an A/B test
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAbTestRequest"
+      responses:
+        "201":
+          description: A/B test created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AbTest"
+
+  /leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      summary: List leads
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Leads list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadListResponse"
+
+  /email/campaigns:
+    get:
+      operationId: listEmailCampaigns
+      tags: [email]
+      summary: List email campaigns
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Email campaigns
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EmailCampaign"
+    post:
+      operationId: createEmailCampaign
+      tags: [email]
+      summary: Create email campaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEmailCampaignRequest"
+      responses:
+        "201":
+          description: Email campaign created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailCampaign"
+
+  /social/posts:
+    get:
+      operationId: listSocialPosts
+      tags: [social]
+      summary: List scheduled social posts
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Social posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SocialPost"
+    post:
+      operationId: createSocialPost
+      tags: [social]
+      summary: Create/schedule a social post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSocialPostRequest"
+      responses:
+        "201":
+          description: Social post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialPost"
+
+  /competitors:
+    get:
+      operationId: listCompetitors
+      tags: [competitors]
+      summary: List tracked competitors
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Competitors list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Competitor"
+    post:
+      operationId: addCompetitor
+      tags: [competitors]
+      summary: Add a competitor to track
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCompetitorRequest"
+      responses:
+        "201":
+          description: Competitor added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Competitor"
+
+  /chat-widget/settings:
+    get:
+      operationId: getChatWidgetSettings
+      tags: [chat-widget]
+      summary: Get chat widget settings
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Chat widget settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatWidgetSettings"
+    put:
+      operationId: updateChatWidgetSettings
+      tags: [chat-widget]
+      summary: Update chat widget settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatWidgetSettings"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatWidgetSettings"
+
+  /chat-widget/conversations:
+    get:
+      operationId: listChatConversations
+      tags: [chat-widget]
+      summary: List chat conversations
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Chat conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatConversation"
+
+  /ai/recommendations:
+    get:
+      operationId: getAiRecommendations
+      tags: [dashboard]
+      summary: Get AI-powered marketing recommendations
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: AI recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiRecommendation"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +675,931 @@ components:
       required:
         - status
 
+    DashboardOverview:
+      type: object
+      properties:
+        totalVisitors:
+          type: integer
+        visitorsChange:
+          type: number
+        pageViews:
+          type: integer
+        pageViewsChange:
+          type: number
+        bounceRate:
+          type: number
+        bounceRateChange:
+          type: number
+        avgSessionDuration:
+          type: number
+        avgSessionDurationChange:
+          type: number
+        leads:
+          type: integer
+        leadsChange:
+          type: number
+        conversionRate:
+          type: number
+        conversionRateChange:
+          type: number
+        activeVisitors:
+          type: integer
+      required:
+        - totalVisitors
+        - visitorsChange
+        - pageViews
+        - pageViewsChange
+        - bounceRate
+        - bounceRateChange
+        - avgSessionDuration
+        - avgSessionDurationChange
+        - leads
+        - leadsChange
+        - conversionRate
+        - conversionRateChange
+        - activeVisitors
+
+    VisitorChartData:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              visitors:
+                type: integer
+              pageViews:
+                type: integer
+            required:
+              - date
+              - visitors
+              - pageViews
+      required:
+        - data
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        trackingId:
+          type: string
+        industry:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+      required:
+        - id
+        - name
+        - url
+        - trackingId
+        - isActive
+        - createdAt
+
+    CreateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        industry:
+          type: string
+      required:
+        - name
+        - url
+
+    TrackingSnippet:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        trackingId:
+          type: string
+        snippet:
+          type: string
+      required:
+        - projectId
+        - trackingId
+        - snippet
+
+    AnalyticsOverview:
+      type: object
+      properties:
+        visitors:
+          type: integer
+        pageViews:
+          type: integer
+        sessions:
+          type: integer
+        bounceRate:
+          type: number
+        avgSessionDuration:
+          type: number
+        newVisitors:
+          type: integer
+        returningVisitors:
+          type: integer
+      required:
+        - visitors
+        - pageViews
+        - sessions
+        - bounceRate
+        - avgSessionDuration
+        - newVisitors
+        - returningVisitors
+
+    PageAnalytics:
+      type: object
+      properties:
+        path:
+          type: string
+        title:
+          type: string
+        views:
+          type: integer
+        uniqueVisitors:
+          type: integer
+        bounceRate:
+          type: number
+        avgTimeOnPage:
+          type: number
+      required:
+        - path
+        - views
+        - uniqueVisitors
+        - bounceRate
+        - avgTimeOnPage
+
+    TrafficSource:
+      type: object
+      properties:
+        source:
+          type: string
+        visitors:
+          type: integer
+        percentage:
+          type: number
+        change:
+          type: number
+      required:
+        - source
+        - visitors
+        - percentage
+        - change
+
+    SeoAnalyzeRequest:
+      type: object
+      properties:
+        url:
+          type: string
+        projectId:
+          type: integer
+      required:
+        - url
+        - projectId
+
+    SeoAnalysis:
+      type: object
+      properties:
+        url:
+          type: string
+        score:
+          type: integer
+        issues:
+          type: array
+          items:
+            $ref: "#/components/schemas/SeoIssue"
+        recommendations:
+          type: array
+          items:
+            type: string
+        metaTags:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            hasOgTags:
+              type: boolean
+          required:
+            - hasOgTags
+        pageSpeed:
+          type: object
+          properties:
+            mobile:
+              type: integer
+            desktop:
+              type: integer
+          required:
+            - mobile
+            - desktop
+      required:
+        - url
+        - score
+        - issues
+        - recommendations
+        - metaTags
+        - pageSpeed
+
+    SeoIssue:
+      type: object
+      properties:
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [critical, warning, info]
+        message:
+          type: string
+        fix:
+          type: string
+      required:
+        - type
+        - severity
+        - message
+        - fix
+
+    SeoReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        url:
+          type: string
+        score:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        issueCount:
+          type: integer
+      required:
+        - id
+        - projectId
+        - url
+        - score
+        - createdAt
+        - issueCount
+
+    KeywordResearchRequest:
+      type: object
+      properties:
+        topic:
+          type: string
+        projectId:
+          type: integer
+        country:
+          type: string
+      required:
+        - topic
+        - projectId
+
+    KeywordResearchResult:
+      type: object
+      properties:
+        keywords:
+          type: array
+          items:
+            $ref: "#/components/schemas/Keyword"
+        relatedTopics:
+          type: array
+          items:
+            type: string
+      required:
+        - keywords
+        - relatedTopics
+
+    Keyword:
+      type: object
+      properties:
+        keyword:
+          type: string
+        searchVolume:
+          type: integer
+        difficulty:
+          type: integer
+        cpc:
+          type: number
+        trend:
+          type: string
+          enum: [rising, stable, falling]
+        intent:
+          type: string
+          enum: [informational, commercial, transactional, navigational]
+      required:
+        - keyword
+        - searchVolume
+        - difficulty
+        - cpc
+        - trend
+        - intent
+
+    SavedKeyword:
+      type: object
+      properties:
+        id:
+          type: integer
+        keyword:
+          type: string
+        searchVolume:
+          type: integer
+        difficulty:
+          type: integer
+        savedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - keyword
+        - searchVolume
+        - difficulty
+        - savedAt
+
+    ContentGenerateRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [blog_post, ad_copy, social_media, email, landing_page, product_description]
+        topic:
+          type: string
+        tone:
+          type: string
+          enum: [professional, casual, persuasive, informational, humorous]
+        targetAudience:
+          type: string
+        projectId:
+          type: integer
+        keywords:
+          type: array
+          items:
+            type: string
+      required:
+        - type
+        - topic
+        - projectId
+
+    GeneratedContent:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        content:
+          type: string
+        title:
+          type: string
+        seoScore:
+          type: integer
+        wordCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - content
+        - title
+        - wordCount
+        - createdAt
+
+    ContentHistoryItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        wordCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - title
+        - wordCount
+        - createdAt
+
+    Funnel:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        projectId:
+          type: integer
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStep"
+        createdAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+      required:
+        - id
+        - name
+        - projectId
+        - steps
+        - createdAt
+        - isActive
+
+    FunnelStep:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        order:
+          type: integer
+      required:
+        - id
+        - name
+        - url
+        - order
+
+    CreateFunnelRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        projectId:
+          type: integer
+        steps:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              url:
+                type: string
+              order:
+                type: integer
+            required:
+              - name
+              - url
+              - order
+      required:
+        - name
+        - projectId
+        - steps
+
+    FunnelData:
+      type: object
+      properties:
+        funnelId:
+          type: integer
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStepData"
+        overallConversionRate:
+          type: number
+        totalEntries:
+          type: integer
+      required:
+        - funnelId
+        - steps
+        - overallConversionRate
+        - totalEntries
+
+    FunnelStepData:
+      type: object
+      properties:
+        stepId:
+          type: integer
+        name:
+          type: string
+        visitors:
+          type: integer
+        dropoffRate:
+          type: number
+        conversionRate:
+          type: number
+      required:
+        - stepId
+        - name
+        - visitors
+        - dropoffRate
+        - conversionRate
+
+    AbTest:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        projectId:
+          type: integer
+        status:
+          type: string
+          enum: [draft, running, paused, completed]
+        control:
+          $ref: "#/components/schemas/AbTestVariant"
+        variant:
+          $ref: "#/components/schemas/AbTestVariant"
+        winner:
+          type: string
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        confidence:
+          type: number
+      required:
+        - id
+        - name
+        - projectId
+        - status
+        - control
+        - variant
+        - createdAt
+        - confidence
+
+    AbTestVariant:
+      type: object
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+        visitors:
+          type: integer
+        conversions:
+          type: integer
+        conversionRate:
+          type: number
+      required:
+        - name
+        - url
+        - visitors
+        - conversions
+        - conversionRate
+
+    CreateAbTestRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        projectId:
+          type: integer
+        controlUrl:
+          type: string
+        variantUrl:
+          type: string
+        goal:
+          type: string
+      required:
+        - name
+        - projectId
+        - controlUrl
+        - variantUrl
+        - goal
+
+    Lead:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        source:
+          type: string
+        status:
+          type: string
+          enum: [new, contacted, qualified, converted, lost]
+        score:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - source
+        - status
+        - score
+        - createdAt
+
+    LeadListResponse:
+      type: object
+      properties:
+        leads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - leads
+        - total
+        - page
+        - limit
+
+    EmailCampaign:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        subject:
+          type: string
+        status:
+          type: string
+          enum: [draft, scheduled, sent, paused]
+        recipients:
+          type: integer
+        opens:
+          type: integer
+        clicks:
+          type: integer
+        openRate:
+          type: number
+        clickRate:
+          type: number
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - subject
+        - status
+        - recipients
+        - opens
+        - clicks
+        - openRate
+        - clickRate
+        - createdAt
+
+    CreateEmailCampaignRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        projectId:
+          type: integer
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - name
+        - subject
+        - body
+        - projectId
+
+    SocialPost:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        platforms:
+          type: array
+          items:
+            type: string
+            enum: [twitter, linkedin, facebook, instagram]
+        status:
+          type: string
+          enum: [draft, scheduled, published, failed]
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        likes:
+          type: integer
+        shares:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - content
+        - platforms
+        - status
+        - likes
+        - shares
+        - createdAt
+
+    CreateSocialPostRequest:
+      type: object
+      properties:
+        content:
+          type: string
+        platforms:
+          type: array
+          items:
+            type: string
+        projectId:
+          type: integer
+        scheduledAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - content
+        - platforms
+        - projectId
+
+    Competitor:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        projectId:
+          type: integer
+        metrics:
+          type: object
+          properties:
+            domainAuthority:
+              type: integer
+            backlinks:
+              type: integer
+            organicKeywords:
+              type: integer
+            estimatedTraffic:
+              type: integer
+          required:
+            - domainAuthority
+            - backlinks
+            - organicKeywords
+            - estimatedTraffic
+        lastUpdated:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - url
+        - projectId
+        - metrics
+        - createdAt
+        - lastUpdated
+
+    AddCompetitorRequest:
+      type: object
+      properties:
+        url:
+          type: string
+        projectId:
+          type: integer
+      required:
+        - url
+        - projectId
+
+    ChatWidgetSettings:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        isEnabled:
+          type: boolean
+        welcomeMessage:
+          type: string
+        botName:
+          type: string
+        primaryColor:
+          type: string
+        position:
+          type: string
+          enum: [bottom-right, bottom-left]
+        qualifyLeads:
+          type: boolean
+        captureEmail:
+          type: boolean
+      required:
+        - projectId
+        - isEnabled
+        - welcomeMessage
+        - botName
+        - primaryColor
+        - position
+        - qualifyLeads
+        - captureEmail
+
+    ChatConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        visitorId:
+          type: string
+        email:
+          type: string
+          nullable: true
+        messagesCount:
+          type: integer
+        isQualified:
+          type: boolean
+        startedAt:
+          type: string
+          format: date-time
+        lastMessageAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - visitorId
+        - messagesCount
+        - isQualified
+        - startedAt
+        - lastMessageAt
+
+    AiRecommendation:
+      type: object
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+          enum: [seo, content, conversion, traffic, engagement]
+        priority:
+          type: string
+          enum: [high, medium, low]
+        title:
+          type: string
+        description:
+          type: string
+        estimatedImpact:
+          type: string
+        action:
+          type: string
+        isCompleted:
+          type: boolean
+      required:
+        - id
+        - category
+        - priority
+        - title
+        - description
+        - estimatedImpact
+        - action
+        - isCompleted
