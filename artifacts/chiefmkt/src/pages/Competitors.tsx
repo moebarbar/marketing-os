@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useListCompetitors, useAddCompetitor } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
-import { LineChart, Plus, Globe, Link as LinkIcon, Key, TrendingUp } from "lucide-react";
+import { LineChart, Plus, Globe, Link as LinkIcon, Key, TrendingUp, Users } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 
 const PROJECT_ID = 1;
