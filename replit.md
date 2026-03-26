@@ -86,15 +86,17 @@ Backend integration clients live in `artifacts/api-server/src/integrations/`. Ea
 - Auth header: `X-Replit-Token: repl {REPL_IDENTITY}`
 
 ### Integration IDs (for proposeIntegration)
-- HubSpot: `connector:ccfg_hubspot_96987450B7BE4A05A4843E3756`
-- SendGrid: `connection:conn_sendgrid_01KJ6Q6G9W8R3C0Z23JH0KKF6D`
-- Resend: `connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V`
-- Slack: `connector:ccfg_slack_01KH7W1T1D6TGP3BJGNQ2N9PEH`
-- Google Sheets: `connector:ccfg_google-sheet_E42A9F6CA62546F68A1FECA0E8`
-- Google Drive: `connector:ccfg_google-drive_0F6D7EF5E22543468DB221F94F`
-- Notion: `connector:ccfg_notion_01K49R392Z3CSNMXCPWSV67AF4`
-- Box: `connector:ccfg_box_84EBA40EEC8147A387E0805587`
-- Stripe: `connector:ccfg_stripe_01K611P4YQR0SZM11XFRQJC44Y` — **NOTE: Integration was dismissed by user. To enable billing, either re-authorize via the Stripe connector, or set `STRIPE_SECRET_KEY` as a secret environment variable.**
+- HubSpot: `connector:ccfg_hubspot_96987450B7BE4A05A4843E3756` — **DISMISSED by user**
+- SendGrid: `connection:conn_sendgrid_01KJ6Q6G9W8R3C0Z23JH0KKF6D` — authorized, added
+- Resend: `connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V` — not_setup (awaiting OAuth)
+- Slack: `connector:ccfg_slack_01KH7W1T1D6TGP3BJGNQ2N9PEH` — not_setup (awaiting OAuth)
+- Google Sheets: `connector:ccfg_google-sheet_E42A9F6CA62546F68A1FECA0E8` — not_setup (awaiting OAuth)
+- Google Drive: `connector:ccfg_google-drive_0F6D7EF5E22543468DB221F94F` — not_setup (awaiting OAuth)
+- Notion: `connector:ccfg_notion_01K49R392Z3CSNMXCPWSV67AF4` — not_setup (awaiting OAuth)
+- Box: `connector:ccfg_box_84EBA40EEC8147A387E0805587` — not_setup (awaiting OAuth)
+- Stripe: `connector:ccfg_stripe_01K611P4YQR0SZM11XFRQJC44Y` — **DISMISSED by user. Set `STRIPE_SECRET_KEY` as a secret env var to enable billing.**
+
+**NOTE:** All 8 third-party OAuth connectors (HubSpot, Resend, Slack, Google Sheets, Google Drive, Notion, Box) were dismissed by the user and have not been authorized. The integration code infrastructure is fully built (service clients, API routes, UI connect/disconnect buttons). To activate any integration, propose the connector again via `proposeIntegration(id)` OR provide an API key/token to store as a secret environment variable. The `integrations/client.ts` helper already reads credentials from the Replit Connectors API once authorized.
 
 ## Stripe Billing
 
