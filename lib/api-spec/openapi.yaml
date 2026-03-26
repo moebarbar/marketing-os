@@ -1359,6 +1359,10 @@ components:
           type: number
         clickRate:
           type: number
+        recipientList:
+          type: string
+          nullable: true
+          description: "Comma-separated list of recipient email addresses"
         scheduledAt:
           type: string
           format: date-time

@@ -32,9 +32,9 @@ export default function EmailCampaigns() {
     }
   };
 
-  const openSendDialog = (campaignId: number, campaignName: string) => {
+  const openSendDialog = (campaignId: number, campaignName: string, storedRecipients?: string | null) => {
     setSendDialog({ campaignId, campaignName, provider: sendProvider });
-    setRecipientsInput('');
+    setRecipientsInput(storedRecipients ?? '');
   };
 
   const closeSendDialog = () => {
@@ -140,9 +140,15 @@ export default function EmailCampaigns() {
                 </div>
               </div>
 
+              {campaign.recipientList && (
+                <p className="text-xs text-slate-500 mb-3 truncate">
+                  <span className="text-slate-400">To:</span> {campaign.recipientList}
+                </p>
+              )}
+
               {campaign.status !== 'sent' && (
                 <button
-                  onClick={() => openSendDialog(campaign.id, campaign.name)}
+                  onClick={() => openSendDialog(campaign.id, campaign.name, campaign.recipientList)}
                   disabled={isSending}
                   className="w-full flex items-center justify-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
                 >

@@ -459,6 +459,10 @@ export const ListEmailCampaignsResponseItem = zod.object({
   clicks: zod.number(),
   openRate: zod.number(),
   clickRate: zod.number(),
+  recipientList: zod
+    .string()
+    .nullish()
+    .describe("Comma-separated list of recipient email addresses"),
   scheduledAt: zod.date().nullish(),
   sentAt: zod.date().nullish(),
   createdAt: zod.date(),

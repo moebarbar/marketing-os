@@ -14,6 +14,7 @@ export const emailCampaignsTable = pgTable("email_campaigns", {
   clicks: integer("clicks").notNull().default(0),
   openRate: real("open_rate").notNull().default(0),
   clickRate: real("click_rate").notNull().default(0),
+  recipientList: text("recipient_list"),
   scheduledAt: timestamp("scheduled_at"),
   sentAt: timestamp("sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

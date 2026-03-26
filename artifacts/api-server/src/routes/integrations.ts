@@ -87,28 +87,43 @@ router.post("/integrations/hubspot/sync-lead", async (req, res) => {
   res.json(result);
 });
 
+function resolveRecipients(campaign: { recipientList?: string | null }, to?: unknown): string[] | null {
+  const explicit = Array.isArray(to) ? (to as string[]).filter((e) => e.includes('@')) : [];
+  const stored = campaign.recipientList
+    ? campaign.recipientList.split(',').map((e) => e.trim()).filter((e) => e.includes('@'))
+    : [];
+  return explicit.length > 0 ? explicit : stored.length > 0 ? stored : null;
+}
+
 router.post("/integrations/sendgrid/send-campaign", async (req, res) => {
   const { campaignId, to } = req.body;
 
   const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-  if (!Array.isArray(to) || to.length === 0) {
-    return res.status(400).json({ success: false, error: "At least one recipient email address is required." });
+  const recipients = resolveRecipients(campaign, to);
+  if (!recipients) {
+    return res.status(400).json({ success: false, error: "No recipients found. Add recipient emails to the campaign or provide them when sending." });
+  }
+
+  if (Array.isArray(to) && (to as string[]).length > 0) {
+    await db.update(emailCampaignsTable)
+      .set({ recipientList: (to as string[]).join(', ') })
+      .where(eq(emailCampaignsTable.id, campaignId));
   }
 
   const result = await sendCampaignViaSendGrid({
-    to,
+    to: recipients,
     subject: campaign.subject,
     body: campaign.body,
   });
 
   if (result.success) {
     await db.update(emailCampaignsTable)
-      .set({ status: 'sent' })
+      .set({ status: 'sent', recipients: recipients.length })
       .where(eq(emailCampaignsTable.id, campaignId));
 
-    await notifyCampaignSent({ name: campaign.name, recipients: campaign.recipients }).catch(() => {});
+    await notifyCampaignSent({ name: campaign.name, recipients: recipients.length }).catch(() => {});
   }
 
   res.json(result);
@@ -120,22 +135,29 @@ router.post("/integrations/resend/send-campaign", async (req, res) => {
   const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, campaignId)).limit(1);
   if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-  if (!Array.isArray(to) || to.length === 0) {
-    return res.status(400).json({ success: false, error: "At least one recipient email address is required." });
+  const recipients = resolveRecipients(campaign, to);
+  if (!recipients) {
+    return res.status(400).json({ success: false, error: "No recipients found. Add recipient emails to the campaign or provide them when sending." });
+  }
+
+  if (Array.isArray(to) && (to as string[]).length > 0) {
+    await db.update(emailCampaignsTable)
+      .set({ recipientList: (to as string[]).join(', ') })
+      .where(eq(emailCampaignsTable.id, campaignId));
   }
 
   const result = await sendCampaignViaResend({
-    to,
+    to: recipients,
     subject: campaign.subject,
     body: campaign.body,
   });
 
   if (result.success) {
     await db.update(emailCampaignsTable)
-      .set({ status: 'sent' })
+      .set({ status: 'sent', recipients: recipients.length })
       .where(eq(emailCampaignsTable.id, campaignId));
 
-    await notifyCampaignSent({ name: campaign.name, recipients: campaign.recipients }).catch(() => {});
+    await notifyCampaignSent({ name: campaign.name, recipients: recipients.length }).catch(() => {});
   }
 
   res.json(result);

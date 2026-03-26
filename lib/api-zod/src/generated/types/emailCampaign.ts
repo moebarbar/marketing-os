@@ -17,6 +17,8 @@ export interface EmailCampaign {
   clicks: number;
   openRate: number;
   clickRate: number;
+  /** Comma-separated list of recipient email addresses */
+  recipientList?: string | null;
   scheduledAt?: Date | null;
   sentAt?: Date | null;
   createdAt: Date;
