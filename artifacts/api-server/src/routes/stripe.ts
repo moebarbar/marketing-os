@@ -93,14 +93,18 @@ router.post("/stripe/webhook", async (req, res) => {
     return;
   }
 
+  if (!webhookSecret) {
+    res.status(503).json({ error: "Webhook secret not configured. Set STRIPE_WEBHOOK_SECRET to enable webhooks." });
+    return;
+  }
+  if (!sig) {
+    res.status(400).json({ error: "Missing Stripe-Signature header" });
+    return;
+  }
   try {
-    if (webhookSecret && sig) {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } else {
-      event = JSON.parse(req.body as string);
-    }
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch {
-    res.status(400).json({ error: "Invalid webhook" });
+    res.status(400).json({ error: "Invalid webhook signature" });
     return;
   }
 

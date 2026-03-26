@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchIntegrationStatuses } from "@/lib/integrations-api";
-import { Plug, CheckCircle2, XCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { Plug, CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertCircle, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 const INTEGRATIONS = [
   {
@@ -71,26 +73,15 @@ const INTEGRATIONS = [
   },
 ];
 
-const CONNECTOR_IDS: Record<string, string> = {
-  hubspot: "connector:ccfg_hubspot_96987450B7BE4A05A4843E3756",
-  sendgrid: "connection:conn_sendgrid_01KJ6Q6G9W8R3C0Z23JH0KKF6D",
-  resend: "connector:ccfg_resend_01K69QKYK789WN202XSE3QS17V",
-  slack: "connector:ccfg_slack_01KH7W1T1D6TGP3BJGNQ2N9PEH",
-  "google-sheet": "connector:ccfg_google-sheet_E42A9F6CA62546F68A1FECA0E8",
-  "google-drive": "connector:ccfg_google-drive_0F6D7EF5E22543468DB221F94F",
-  notion: "connector:ccfg_notion_01K49R392Z3CSNMXCPWSV67AF4",
-  box: "connector:ccfg_box_84EBA40EEC8147A387E0805587",
-};
-
 export default function Integrations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<string>("All");
 
-  const { data: statuses, isLoading, refetch, isFetching } = useQuery({
+  const { data: statuses, isLoading, isFetching } = useQuery({
     queryKey: ["integration-statuses"],
     queryFn: fetchIntegrationStatuses,
-    staleTime: 30_000,
+    staleTime: 15_000,
   });
 
   const categories = ["All", ...Array.from(new Set(INTEGRATIONS.map((i) => i.category)))];
@@ -102,7 +93,39 @@ export default function Integrations() {
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["integration-statuses"] });
-    refetch();
+  };
+
+  const handleConnect = async (service: string, name: string) => {
+    queryClient.setQueryData<Record<string, boolean>>(["integration-statuses"], (old) => ({
+      ...(old ?? {}),
+      [service]: false,
+    }));
+
+    const res = await fetch(`${BASE}/api/integrations/connect/${service}`, { method: "POST" });
+    const data = await res.json() as { connected: boolean; message?: string };
+
+    if (data.connected) {
+      queryClient.setQueryData<Record<string, boolean>>(["integration-statuses"], (old) => ({
+        ...(old ?? {}),
+        [service]: true,
+      }));
+      toast({ title: `${name} connected`, description: "Integration is active and ready to use." });
+    } else {
+      toast({
+        title: `${name} not yet authorized`,
+        description: data.message ?? `Ask the AI assistant to connect ${name} to authorize it.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDisconnect = async (service: string, name: string) => {
+    await fetch(`${BASE}/api/integrations/disconnect/${service}`, { method: "POST" });
+    queryClient.setQueryData<Record<string, boolean>>(["integration-statuses"], (old) => ({
+      ...(old ?? {}),
+      [service]: false,
+    }));
+    toast({ title: `${name} disconnected`, description: "Integration has been disabled." });
   };
 
   return (
@@ -173,7 +196,8 @@ export default function Integrations() {
                 key={integration.id}
                 integration={integration}
                 connected={connected}
-                onStatusChange={handleRefresh}
+                onConnect={() => handleConnect(integration.id, integration.name)}
+                onDisconnect={() => handleDisconnect(integration.id, integration.name)}
               />
             );
           })}
@@ -181,13 +205,18 @@ export default function Integrations() {
       )}
 
       <div className="glass-panel p-6 rounded-2xl border border-slate-800 bg-slate-900/50">
-        <h3 className="font-bold text-white mb-2">How to connect an integration</h3>
-        <p className="text-sm text-slate-400 leading-relaxed">
-          Integrations are connected through Replit's secure OAuth system. To connect a service, click the{" "}
-          <span className="text-primary font-medium">Connect</span> button on any card — this will open Replit's
-          integration panel where you can complete the OAuth flow or enter API credentials. Once connected, all
-          integration actions (sync, export, send) will work automatically.
-        </p>
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-bold text-white mb-1">How to connect an integration</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Integrations use Replit's secure OAuth system. To authorize a new service, ask the AI assistant:{" "}
+              <span className="text-primary font-medium">"Connect my [service] integration"</span>.
+              Once authorized, clicking <span className="text-primary font-medium">Connect</span> on any card will activate it instantly. 
+              Click <span className="text-amber-400 font-medium">Disconnect</span> to disable any active integration.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -196,23 +225,20 @@ export default function Integrations() {
 function IntegrationCard({
   integration,
   connected,
-  onStatusChange,
+  onConnect,
+  onDisconnect,
 }: {
   integration: (typeof INTEGRATIONS)[0];
   connected: boolean;
-  onStatusChange: () => void;
+  onConnect: () => void;
+  onDisconnect: () => void;
 }) {
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  const handleConnect = async () => {
+  const handleAction = async (fn: () => void | Promise<void>) => {
     setLoading(true);
     try {
-      const connId = CONNECTOR_IDS[integration.id];
-      toast({
-        title: "Opening integration setup...",
-        description: `Please complete the ${integration.name} authorization in the Replit integration panel.`,
-      });
+      await fn();
     } finally {
       setLoading(false);
     }
@@ -246,18 +272,20 @@ function IntegrationCard({
       <div className="flex gap-2">
         {!connected ? (
           <button
-            onClick={handleConnect}
+            onClick={() => handleAction(onConnect)}
             disabled={loading}
             className="flex-1 bg-primary hover:bg-primary/90 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
-            {loading ? "Connecting..." : "Connect"}
+            {loading ? "Checking..." : "Connect"}
           </button>
         ) : (
           <button
-            disabled
-            className="flex-1 bg-emerald-500/10 text-emerald-400 px-3 py-2 rounded-lg text-sm font-medium cursor-default border border-emerald-500/20"
+            onClick={() => handleAction(onDisconnect)}
+            disabled={loading}
+            className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 text-slate-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-700 disabled:opacity-50"
           >
-            Active
+            <LogOut className="w-3.5 h-3.5" />
+            {loading ? "Disconnecting..." : "Disconnect"}
           </button>
         )}
         <a

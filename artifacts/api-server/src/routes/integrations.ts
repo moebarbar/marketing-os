@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, emailCampaignsTable, contentHistoryTable, seoReportsTable } from "@workspace/db/schema";
+import { leadsTable, emailCampaignsTable, contentHistoryTable, seoReportsTable, integrationStatesTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { getAllConnectionStatuses } from "../integrations/client.js";
+import { getAllConnectionStatuses, checkConnectionStatus } from "../integrations/client.js";
 import { syncLeadToHubSpot } from "../integrations/hubspot.js";
 import { sendCampaignViaSendGrid } from "../integrations/sendgrid.js";
 import { sendCampaignViaResend } from "../integrations/resend.js";
@@ -14,9 +14,56 @@ import { pushContentToNotion } from "../integrations/notion.js";
 
 const router: IRouter = Router();
 
+async function getEffectiveStatuses(): Promise<Record<string, boolean>> {
+  const [replit, overrides] = await Promise.all([
+    getAllConnectionStatuses(),
+    db.select().from(integrationStatesTable),
+  ]);
+  const disconnected = new Set(overrides.filter((r) => r.isDisconnected).map((r) => r.service));
+  return Object.fromEntries(
+    Object.entries(replit).map(([k, v]) => [k, v && !disconnected.has(k)])
+  );
+}
+
 router.get("/integrations/status", async (_req, res) => {
-  const statuses = await getAllConnectionStatuses();
+  const statuses = await getEffectiveStatuses();
   res.json(statuses);
+});
+
+router.post("/integrations/connect/:service", async (req, res) => {
+  const { service } = req.params;
+  const replitConnected = await checkConnectionStatus(service);
+
+  if (!replitConnected) {
+    res.json({
+      connected: false,
+      service,
+      message: `${service} is not yet authorized. Ask the AI assistant to connect it, or authorize it in the Replit integrations panel.`,
+    });
+    return;
+  }
+
+  await db
+    .insert(integrationStatesTable)
+    .values({ service, isDisconnected: false })
+    .onConflictDoUpdate({
+      target: integrationStatesTable.service,
+      set: { isDisconnected: false, updatedAt: new Date() },
+    });
+
+  res.json({ connected: true, service });
+});
+
+router.post("/integrations/disconnect/:service", async (req, res) => {
+  const { service } = req.params;
+  await db
+    .insert(integrationStatesTable)
+    .values({ service, isDisconnected: true })
+    .onConflictDoUpdate({
+      target: integrationStatesTable.service,
+      set: { isDisconnected: true, updatedAt: new Date() },
+    });
+  res.json({ success: true, service, connected: false });
 });
 
 router.post("/integrations/hubspot/sync-lead", async (req, res) => {
