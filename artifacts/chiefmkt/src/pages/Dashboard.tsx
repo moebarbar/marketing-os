@@ -15,10 +15,10 @@ export default function Dashboard() {
   if (overviewError || !overview) return <ErrorState message="Failed to load dashboard metrics" />;
 
   const metrics = [
-    { label: "Total Visitors", value: overview.totalVisitors.toLocaleString(), change: overview.visitorsChange, icon: Users },
-    { label: "Page Views", value: overview.pageViews.toLocaleString(), change: overview.pageViewsChange, icon: Eye },
-    { label: "Leads", value: overview.leads.toLocaleString(), change: overview.leadsChange, icon: Zap },
-    { label: "Conversion Rate", value: `${(overview.conversionRate * 100).toFixed(1)}%`, change: overview.conversionRateChange, icon: MousePointerClick },
+    { label: "Total Visitors", value: (overview?.totalVisitors || 0).toLocaleString(), change: overview?.visitorsChange || 0, icon: Users },
+    { label: "Page Views", value: (overview?.pageViews || 0).toLocaleString(), change: overview?.pageViewsChange || 0, icon: Eye },
+    { label: "Leads", value: (overview?.leads || 0).toLocaleString(), change: overview?.leadsChange || 0, icon: Zap },
+    { label: "Conversion Rate", value: `${((overview?.conversionRate || 0) * 100).toFixed(1)}%`, change: overview?.conversionRateChange || 0, icon: MousePointerClick },
   ];
 
   return (

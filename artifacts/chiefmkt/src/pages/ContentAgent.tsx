@@ -16,17 +16,46 @@ const QUICK_PROMPTS = [
   { label: "✉️ Cold outreach", prompt: "Write a cold email template I can personalize for my ICP. Subject line, 3-paragraph body, and P.S. line. Under 150 words total." },
 ];
 
-export default function ContentAgentPage() {
-  const { session, loading, error: sessionError, newSession } =
-    useAgentSession("chiefmkt-content", 1);
+interface Session {
+  sandboxId: string;
+  threadId: string;
+}
 
-  const chat = useMemo(() => {
-    if (!session) return null;
-    return createContentChat(session.sandboxId, session.threadId);
-  }, [session?.sandboxId, session?.threadId]);
+function ContentAgentChat({ session, newSession }: { session: Session; newSession: () => void }) {
+  const chat = useMemo(
+    () => createContentChat(session.sandboxId, session.threadId),
+    [session.sandboxId, session.threadId]
+  );
 
   const { messages, handleSubmit, status, stop, error, setInput } =
     useChat({ chat: chat as any });
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
+        <div>
+          <h1 className="font-semibold text-sm text-foreground">Content Agent</h1>
+          <p className="text-xs text-muted-foreground">Writes content that sounds exactly like your brand</p>
+        </div>
+        <button onClick={newSession} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-accent">New chat</button>
+      </div>
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto border-b border-border flex-shrink-0 scrollbar-hide">
+        {QUICK_PROMPTS.map((qp) => (
+          <button key={qp.label} onClick={() => setInput(qp.prompt)} className="whitespace-nowrap px-3 py-1.5 text-xs rounded-full border border-border bg-background hover:bg-accent transition-colors flex-shrink-0">
+            {qp.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 min-h-0">
+        <AgentChat messages={messages} onSend={() => handleSubmit()} status={status} onStop={stop} error={error ?? undefined} theme="cursor" />
+      </div>
+    </div>
+  );
+}
+
+export default function ContentAgentPage() {
+  const { session, loading, error: sessionError, newSession } =
+    useAgentSession("chiefmkt-content", 1);
 
   if (loading) {
     return (
@@ -50,25 +79,5 @@ export default function ContentAgentPage() {
     );
   }
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-        <div>
-          <h1 className="font-semibold text-sm text-foreground">Content Agent</h1>
-          <p className="text-xs text-muted-foreground">Writes content that sounds exactly like your brand</p>
-        </div>
-        <button onClick={newSession} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-accent">New chat</button>
-      </div>
-      <div className="flex gap-2 px-4 py-2 overflow-x-auto border-b border-border flex-shrink-0 scrollbar-hide">
-        {QUICK_PROMPTS.map((qp) => (
-          <button key={qp.label} onClick={() => setInput(qp.prompt)} className="whitespace-nowrap px-3 py-1.5 text-xs rounded-full border border-border bg-background hover:bg-accent transition-colors flex-shrink-0">
-            {qp.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 min-h-0">
-        <AgentChat messages={messages} onSend={() => handleSubmit()} status={status} onStop={stop} error={error ?? undefined} theme="cursor" />
-      </div>
-    </div>
-  );
+  return <ContentAgentChat session={session} newSession={newSession} />;
 }
