@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
+import CmoChatPage from "@/pages/CmoChat";
 import CmoAgentPage from "@/pages/CmoAgent";
 import SeoAgentPage from "@/pages/SeoAgent";
 import ContentAgentPage from "@/pages/ContentAgent";
@@ -41,6 +42,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/chat" component={CmoChatPage} />
         <Route path="/agent/cmo" component={CmoAgentPage} />
         <Route path="/agent/seo" component={SeoAgentPage} />
         <Route path="/agent/content" component={ContentAgentPage} />

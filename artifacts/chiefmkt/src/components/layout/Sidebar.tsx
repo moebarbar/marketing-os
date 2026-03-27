@@ -63,6 +63,23 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 px-3 scrollbar-hide">
+        {/* CMO Chat — featured */}
+        <div className="mb-3">
+          <Link
+            href="/chat"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group bg-gradient-to-r",
+              location === "/chat"
+                ? "from-primary/20 to-purple-500/10 text-primary border border-primary/20"
+                : "from-primary/5 to-purple-500/5 text-foreground border border-primary/10 hover:from-primary/15 hover:to-purple-500/10 hover:border-primary/25"
+            )}
+          >
+            <Bot className="w-5 h-5 text-primary" />
+            Ask your CMO
+            <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded-full">AI</span>
+          </Link>
+        </div>
+
         {/* AI Agents section */}
         <div className="mb-4">
           <div className="flex items-center gap-2 px-3 mb-2">
