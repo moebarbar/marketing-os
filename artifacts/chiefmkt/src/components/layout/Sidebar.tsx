@@ -1,14 +1,21 @@
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, BarChart3, LineChart, Search, 
-  PenTool, Filter, SplitSquareHorizontal, Users, 
+import {
+  LayoutDashboard, BarChart3, LineChart, Search,
+  PenTool, Filter, SplitSquareHorizontal, Users,
   Mail, Share2, Target, MessageSquare, Zap, Plug,
-  CreditCard
+  CreditCard, Bot, FileText, TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+
+const AGENT_ITEMS = [
+  { icon: Zap, label: "CMO Agent", href: "/agent/cmo" },
+  { icon: Search, label: "SEO Agent", href: "/agent/seo" },
+  { icon: FileText, label: "Content Agent", href: "/agent/content" },
+  { icon: TrendingUp, label: "Leads Agent", href: "/agent/leads" },
+];
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -55,32 +62,70 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1 scrollbar-hide">
-        {NAV_ITEMS.map((item) => {
-          const isActive = location === item.href;
-          return (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
-                isActive 
-                  ? "bg-primary/10 text-primary" 
-                  : "text-muted-foreground hover:bg-slate-800/50 hover:text-foreground"
-              )}
-            >
-              <item.icon className={cn(
-                "w-5 h-5 transition-colors",
-                isActive ? "text-primary" : "text-slate-500 group-hover:text-foreground"
-              )} />
-              {item.label}
-              
-              {isActive && (
-                <div className="ml-auto w-1.5 h-4 rounded-full bg-primary" />
-              )}
-            </Link>
-          );
-        })}
+      <div className="flex-1 overflow-y-auto py-4 px-3 scrollbar-hide">
+        {/* AI Agents section */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 px-3 mb-2">
+            <Bot className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">AI Agents</span>
+          </div>
+          <div className="space-y-0.5">
+            {AGENT_ITEMS.map((item) => {
+              const isActive = location === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-slate-800/50 hover:text-foreground"
+                  )}
+                >
+                  <item.icon className={cn(
+                    "w-5 h-5 transition-colors",
+                    isActive ? "text-primary" : "text-slate-500 group-hover:text-foreground"
+                  )} />
+                  {item.label}
+                  {isActive && (
+                    <div className="ml-auto w-1.5 h-4 rounded-full bg-primary" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="h-px bg-card-border mx-3 mb-4" />
+
+        {/* Main nav */}
+        <div className="space-y-0.5">
+          {NAV_ITEMS.map((item) => {
+            const isActive = location === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-slate-800/50 hover:text-foreground"
+                )}
+              >
+                <item.icon className={cn(
+                  "w-5 h-5 transition-colors",
+                  isActive ? "text-primary" : "text-slate-500 group-hover:text-foreground"
+                )} />
+                {item.label}
+                {isActive && (
+                  <div className="ml-auto w-1.5 h-4 rounded-full bg-primary" />
+                )}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <div className="p-4 border-t border-card-border space-y-3">

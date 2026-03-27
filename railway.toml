@@ -1,0 +1,7 @@
+[build]
+buildCommand = "pnpm --filter @workspace/chiefmkt build && pnpm --filter @workspace/api-server build"
+
+[deploy]
+startCommand = "node artifacts/api-server/dist/index.mjs"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

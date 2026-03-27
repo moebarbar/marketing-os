@@ -7,6 +7,10 @@ import NotFound from "@/pages/not-found";
 
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
+import CmoAgentPage from "@/pages/CmoAgent";
+import SeoAgentPage from "@/pages/SeoAgent";
+import ContentAgentPage from "@/pages/ContentAgent";
+import LeadsAgentPage from "@/pages/LeadsAgent";
 import SeoAnalyzer from "@/pages/SeoAnalyzer";
 import Keywords from "@/pages/Keywords";
 import ContentGenerator from "@/pages/ContentGenerator";
@@ -37,6 +41,10 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/analytics" component={Analytics} />
+        <Route path="/agent/cmo" component={CmoAgentPage} />
+        <Route path="/agent/seo" component={SeoAgentPage} />
+        <Route path="/agent/content" component={ContentAgentPage} />
+        <Route path="/agent/leads" component={LeadsAgentPage} />
         <Route path="/seo" component={SeoAnalyzer} />
         <Route path="/keywords" component={Keywords} />
         <Route path="/content" component={ContentGenerator} />

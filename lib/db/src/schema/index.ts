@@ -10,3 +10,5 @@ export * from "./funnels";
 export * from "./chat-widget";
 export * from "./subscriptions";
 export * from "./integration-states";
+export * from "./agent-memory";
+export * from "./agent-sessions";

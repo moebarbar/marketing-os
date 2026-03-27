@@ -10,7 +10,15 @@
   },
   "private": true,
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-darwin-x64": "^4.60.0",
+    "@tailwindcss/oxide-darwin-x64": "4.2.1",
+    "lightningcss-darwin-x64": "^1.32.0",
+    "@rollup/rollup-linux-x64-gnu": "^4.60.0",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.2.1",
+    "lightningcss-linux-x64-gnu": "^1.32.0"
   }
 }

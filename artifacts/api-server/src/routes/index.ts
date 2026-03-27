@@ -15,6 +15,7 @@ import competitorsRouter from "./competitors";
 import chatWidgetRouter from "./chat-widget";
 import integrationsRouter from "./integrations";
 import stripeRouter from "./stripe";
+import agentsRouter from "./agents";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(competitorsRouter);
 router.use(chatWidgetRouter);
 router.use(integrationsRouter);
 router.use(stripeRouter);
+router.use(agentsRouter);
 
 export default router;
