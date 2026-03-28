@@ -1,6 +1,6 @@
 import { agent, tool } from "@21st-sdk/agent";
 import { z } from "zod";
-import { recallContext, getLiveData } from "../../lib/memory.js";
+import { recallContext, getLiveData, saveContent } from "../../lib/memory.js";
 
 const PROJECT_ID = parseInt(process.env.PROJECT_ID ?? "1");
 
@@ -45,6 +45,22 @@ Rules:
         const data = await getLiveData(PROJECT_ID, "content");
         return {
           content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+        };
+      },
+    }),
+
+    save_content: tool({
+      description:
+        "Save generated content to the platform's history. Always call this after writing any piece of content.",
+      inputSchema: z.object({
+        type: z.string().describe("Content type e.g. blog_post, email, ad_copy, linkedin_post"),
+        title: z.string().describe("Title or subject of the content"),
+        content: z.string().describe("The full generated content"),
+      }),
+      execute: async ({ type, title, content }) => {
+        await saveContent(PROJECT_ID, type, title, content);
+        return {
+          content: [{ type: "text" as const, text: `Saved: ${title}` }],
         };
       },
     }),

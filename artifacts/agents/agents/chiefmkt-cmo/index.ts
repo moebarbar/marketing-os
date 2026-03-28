@@ -1,6 +1,6 @@
 import { agent, tool } from "@21st-sdk/agent";
 import { z } from "zod";
-import { rememberFact, recallContext, getLiveData } from "../../lib/memory.js";
+import { rememberFact, recallContext, getLiveData, saveContent } from "../../lib/memory.js";
 
 const PROJECT_ID = parseInt(process.env.PROJECT_ID ?? "1");
 
@@ -18,6 +18,8 @@ Rules you never break:
 - Before any marketing question: call recall_business_context
 - When user shares any business fact: call remember_business_detail immediately
 - When user asks about their data: call read_live_data
+- Before writing any content: call generate_asset
+- After writing any content: call save_content with the full text
 - Never ask for information already in memory
 - Give direct recommendations, not options
 - Connect every tactic to a business outcome
@@ -98,7 +100,7 @@ You are their dedicated CMO. Act like it.`,
 
     generate_asset: tool({
       description:
-        "Signal that you are generating a specific marketing asset. Use this before writing any content so the UI can render it in the correct format.",
+        "Signal that you are generating a specific marketing asset. Call this BEFORE writing the content.",
       inputSchema: z.object({
         assetType: z.enum([
           "blog_post",
@@ -119,6 +121,22 @@ You are their dedicated CMO. Act like it.`,
       execute: async ({ assetType, topic }) => {
         return {
           content: [{ type: "text" as const, text: `Generating ${assetType}: ${topic}` }],
+        };
+      },
+    }),
+
+    save_content: tool({
+      description:
+        "Save generated content to the platform's content history. Call this AFTER writing any marketing asset so it can be referenced in future sessions.",
+      inputSchema: z.object({
+        type: z.string().describe("Content type e.g. blog_post, email, ad_copy, linkedin_post"),
+        title: z.string().describe("Title or subject of the content"),
+        content: z.string().describe("The full content that was generated"),
+      }),
+      execute: async ({ type, title, content }) => {
+        await saveContent(PROJECT_ID, type, title, content);
+        return {
+          content: [{ type: "text" as const, text: `Saved to content history: ${title}` }],
         };
       },
     }),

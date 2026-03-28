@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const agentMemory = pgTable("agent_memory", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -10,4 +10,6 @@ export const agentMemory = pgTable("agent_memory", {
   accessCount: integer("access_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  projectKeyUnique: uniqueIndex("agent_memory_project_key_unique").on(table.projectId, table.key),
+}));

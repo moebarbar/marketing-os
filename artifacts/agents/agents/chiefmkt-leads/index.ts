@@ -1,6 +1,6 @@
 import { agent, tool } from "@21st-sdk/agent";
 import { z } from "zod";
-import { recallContext, getLiveData, rememberFact } from "../../lib/memory.js";
+import { recallContext, getLiveData, rememberFact, updateLeadScore } from "../../lib/memory.js";
 
 const PROJECT_ID = parseInt(process.env.PROJECT_ID ?? "1");
 
@@ -38,6 +38,22 @@ Rules:
               text: `ICP:\n${icp}\n\nLeads:\n${JSON.stringify(leadsData, null, 2)}`,
             },
           ],
+        };
+      },
+    }),
+
+    update_lead_score: tool({
+      description:
+        "Update a lead's score and status in the database after analysis. Use this to persist your scoring so the platform reflects it.",
+      inputSchema: z.object({
+        leadId: z.number().describe("The numeric ID of the lead"),
+        score: z.number().min(0).max(10).describe("Score from 0-10"),
+        status: z.enum(["new", "contacted", "qualified", "disqualified", "converted"]).optional(),
+      }),
+      execute: async ({ leadId, score, status }) => {
+        await updateLeadScore(PROJECT_ID, leadId, score, status);
+        return {
+          content: [{ type: "text" as const, text: `Updated lead ${leadId}: score=${score}${status ? `, status=${status}` : ""}` }],
         };
       },
     }),
