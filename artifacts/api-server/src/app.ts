@@ -36,10 +36,17 @@ app.use("/api", router);
 
 // Serve built frontend in production
 const staticDir = path.join(process.cwd(), "artifacts/chiefmkt/dist/public");
-if (process.env.NODE_ENV === "production" && existsSync(staticDir)) {
-  app.use(express.static(staticDir));
+const indexHtml = path.join(staticDir, "index.html");
+if (process.env.NODE_ENV === "production") {
+  if (existsSync(staticDir)) {
+    app.use(express.static(staticDir));
+  }
   app.get("*", (_req, res) => {
-    res.sendFile(path.join(staticDir, "index.html"));
+    if (existsSync(indexHtml)) {
+      res.sendFile(indexHtml);
+    } else {
+      res.status(503).send("Frontend not built. Run: pnpm --filter @workspace/chiefmkt build");
+    }
   });
 }
 
