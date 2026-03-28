@@ -330,6 +330,15 @@ export interface Lead {
   createdAt: string;
 }
 
+export interface CreateLeadRequest {
+  email: string;
+  name?: string;
+  company?: string;
+  source?: string;
+  score?: number;
+  projectId: number;
+}
+
 export interface LeadListResponse {
   leads: Lead[];
   total: number;

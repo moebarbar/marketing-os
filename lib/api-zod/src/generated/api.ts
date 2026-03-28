@@ -443,6 +443,21 @@ export const ListLeadsResponse = zod.object({
 });
 
 /**
+ * @summary Create a new lead
+ */
+export const createLeadBodySourceDefault = `manual`;
+export const createLeadBodyScoreDefault = 0;
+
+export const CreateLeadBody = zod.object({
+  email: zod.string(),
+  name: zod.string().optional(),
+  company: zod.string().optional(),
+  source: zod.string().default(createLeadBodySourceDefault),
+  score: zod.number().default(createLeadBodyScoreDefault),
+  projectId: zod.number(),
+});
+
+/**
  * @summary List email campaigns
  */
 export const ListEmailCampaignsQueryParams = zod.object({

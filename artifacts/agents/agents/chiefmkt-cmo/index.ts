@@ -6,7 +6,6 @@ const PROJECT_ID = parseInt(process.env.PROJECT_ID ?? "1");
 
 export default agent({
   model: "claude-sonnet-4-6",
-  runtime: "claude-code",
   permissionMode: "bypassAll",
   maxTurns: 100,
 

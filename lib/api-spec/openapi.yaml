@@ -472,6 +472,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LeadListResponse"
+    post:
+      operationId: createLead
+      tags: [leads]
+      summary: Create a new lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeadRequest"
+      responses:
+        "201":
+          description: Lead created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
 
   /email/campaigns:
     get:
@@ -1317,6 +1334,27 @@ components:
         - status
         - score
         - createdAt
+
+    CreateLeadRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        company:
+          type: string
+        source:
+          type: string
+          default: manual
+        score:
+          type: integer
+          default: 0
+        projectId:
+          type: integer
+      required:
+        - email
+        - projectId
 
     LeadListResponse:
       type: object

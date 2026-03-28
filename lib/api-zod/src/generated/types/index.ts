@@ -27,6 +27,7 @@ export * from "./createAbTestRequest";
 export * from "./createEmailCampaignRequest";
 export * from "./createFunnelRequest";
 export * from "./createFunnelRequestStepsItem";
+export * from "./createLeadRequest";
 export * from "./createProjectRequest";
 export * from "./createSocialPostRequest";
 export * from "./dashboardOverview";

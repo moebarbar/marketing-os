@@ -1,8 +1,37 @@
 import { Router, type IRouter } from "express";
+import { db } from "@workspace/db";
+import { leadsTable, contentHistoryTable } from "@workspace/db/schema";
+import { count, gte, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 router.get("/dashboard/overview", async (_req, res) => {
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sixtyDaysAgo = new Date(now);
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+  const [{ totalLeads }] = await db
+    .select({ totalLeads: count() })
+    .from(leadsTable);
+
+  const [{ recentLeads }] = await db
+    .select({ recentLeads: count() })
+    .from(leadsTable)
+    .where(gte(leadsTable.createdAt, thirtyDaysAgo));
+
+  const [{ prevLeads }] = await db
+    .select({ prevLeads: count() })
+    .from(leadsTable)
+    .where(
+      sql`${leadsTable.createdAt} >= ${sixtyDaysAgo} AND ${leadsTable.createdAt} < ${thirtyDaysAgo}`
+    );
+
+  const leadsChange = prevLeads > 0
+    ? Math.round(((Number(recentLeads) - Number(prevLeads)) / Number(prevLeads)) * 100 * 10) / 10
+    : 0;
+
   res.json({
     totalVisitors: 24892,
     visitorsChange: 12.4,
@@ -12,8 +41,8 @@ router.get("/dashboard/overview", async (_req, res) => {
     bounceRateChange: -3.7,
     avgSessionDuration: 187,
     avgSessionDurationChange: 5.2,
-    leads: 342,
-    leadsChange: 18.9,
+    leads: Number(totalLeads),
+    leadsChange,
     conversionRate: 3.1,
     conversionRateChange: 0.4,
     activeVisitors: 47,
