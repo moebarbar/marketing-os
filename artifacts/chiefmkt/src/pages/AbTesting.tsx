@@ -81,7 +81,12 @@ function EmbedModal({ test, onClose }: { test: AbTest; onClose: () => void }) {
         </div>
         <p className="text-sm text-slate-400">Add this to the <code className="bg-slate-800 px-1 rounded">&lt;head&gt;</code> of your control page to split traffic:</p>
         <pre className="text-[11px] bg-slate-950 text-emerald-400 p-4 rounded-xl border border-slate-800 font-mono overflow-x-auto whitespace-pre-wrap">{snippet}</pre>
-        <p className="text-xs text-slate-500">To track conversions call: <code className="text-blue-400">fetch('/api/ab-tests/{test.id}/convert', {'{'}"method":"POST","body":JSON.stringify({'{'}"variant":window.ChiefMKT_ABVariant{'}'}){'}'}})</code></p>
+        <p className="text-xs text-slate-500">
+          To track conversions, call:{" "}
+          <code className="text-blue-400 break-all">
+            {`fetch('/api/ab-tests/${test.id}/convert', {method:'POST',body:JSON.stringify({variant:window.ChiefMKT_ABVariant})})`}
+          </code>
+        </p>
         <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-medium">Close</button>
       </div>
     </div>
