@@ -1,6 +1,6 @@
 import { agent, tool } from "@21st-sdk/agent";
 import { z } from "zod";
-import { recallContext, getLiveData, rememberFact, updateLeadScore } from "../../lib/memory.js";
+import { recallContext, getLiveData, rememberFact, updateLeadScore, addLead, getSingleLead, getRecentActivity, markLeadContacted } from "../../lib/memory.js";
 
 const PROJECT_ID = parseInt(process.env.PROJECT_ID ?? "1");
 
@@ -74,6 +74,96 @@ Rules:
         return {
           content: [{ type: "text" as const, text: `Note saved for ${leadName}` }],
         };
+      },
+    }),
+
+    add_lead: tool({
+      description: "Create a new lead in the database directly from conversation. Use when the user mentions a new contact or prospect.",
+      inputSchema: z.object({
+        email: z.string().describe("Lead's email address"),
+        name: z.string().optional().describe("Full name"),
+        company: z.string().optional().describe("Company name"),
+        source: z.string().optional().describe("Where this lead came from e.g. linkedin, referral, cold_outreach"),
+        score: z.number().min(0).max(100).optional().describe("Initial lead score 0-100"),
+      }),
+      execute: async ({ email, name, company, source, score }) => {
+        const lead = await addLead(PROJECT_ID, email, name, company, source, score);
+        return {
+          content: [{ type: "text" as const, text: `Lead created: ${lead.name ?? lead.email} (ID: ${lead.id})` }],
+        };
+      },
+    }),
+
+    get_single_lead: tool({
+      description: "Look up a specific lead by email address or name.",
+      inputSchema: z.object({
+        identifier: z.string().describe("Email address or partial name to search for"),
+      }),
+      execute: async ({ identifier }) => {
+        const lead = await getSingleLead(PROJECT_ID, identifier);
+        if (!lead) {
+          return { content: [{ type: "text" as const, text: `No lead found matching: ${identifier}` }] };
+        }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(lead, null, 2) }],
+        };
+      },
+    }),
+
+    list_recent_activity: tool({
+      description: "Show recent leads, content, and SEO activity from the last N days.",
+      inputSchema: z.object({
+        days: z.number().min(1).max(30).default(7),
+      }),
+      execute: async ({ days }) => {
+        const activity = await getRecentActivity(PROJECT_ID, days);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(activity, null, 2) }],
+        };
+      },
+    }),
+
+    send_outreach_email: tool({
+      description: "Send a personalised outreach email to a lead using Resend. Use when you've written an email and the user wants to send it now.",
+      inputSchema: z.object({
+        to: z.string().describe("Recipient email address"),
+        subject: z.string().describe("Email subject line"),
+        body: z.string().describe("Full email body text"),
+        leadId: z.number().optional().describe("Lead ID to mark as contacted after sending"),
+      }),
+      execute: async ({ to, subject, body, leadId }) => {
+        const apiKey = process.env.RESEND_API_KEY;
+        const fromEmail = process.env.RESEND_FROM_EMAIL ?? "ChiefMKT <onboarding@resend.dev>";
+
+        if (!apiKey) {
+          return { content: [{ type: "text" as const, text: "Resend not configured. Add RESEND_API_KEY to Railway environment variables." }] };
+        }
+
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({ from: fromEmail, to, subject, text: body, html: body.replace(/\n/g, "<br/>") }),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          return { content: [{ type: "text" as const, text: `Failed to send: ${err}` }] };
+        }
+
+        if (leadId) await markLeadContacted(PROJECT_ID, leadId);
+
+        return { content: [{ type: "text" as const, text: `Email sent to ${to}${leadId ? ` — lead ${leadId} marked as contacted` : ""}` }] };
+      },
+    }),
+
+    mark_lead_contacted: tool({
+      description: "Mark a lead's status as 'contacted' after reaching out to them.",
+      inputSchema: z.object({
+        leadId: z.number().describe("The numeric ID of the lead"),
+      }),
+      execute: async ({ leadId }) => {
+        await markLeadContacted(PROJECT_ID, leadId);
+        return { content: [{ type: "text" as const, text: `Lead ${leadId} marked as contacted.` }] };
       },
     }),
   },

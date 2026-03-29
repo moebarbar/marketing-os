@@ -1,128 +1,184 @@
-import { useState } from "react";
-import { useGetAnalyticsOverview, useGetTopPages, useGetTrafficSources } from "@workspace/api-client-react";
-import { PageLoader, ErrorState } from "@/components/ui/loading-states";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
-import { Sheet, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { exportToSheets } from "@/lib/integrations-api";
+import { useState, useEffect } from "react";
+import { BarChart3, RefreshCw, Users, Eye, TrendingUp, Clock, MousePointer, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 
+const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 const PROJECT_ID = 1;
-const COLORS = ['hsl(var(--primary))', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b'];
+
+interface Overview {
+  visitors: number;
+  visitorsChange: number;
+  pageViews: number;
+  pageViewsChange: number;
+  bounceRate: number;
+  bounceRateChange: number;
+  avgSessionDuration: number;
+  avgSessionDurationChange: number;
+  activeVisitors: number;
+  hasRealData: boolean;
+}
+
+interface TopPage {
+  path: string;
+  title: string;
+  views: number;
+  uniqueVisitors: number;
+}
+
+function StatCard({ label, value, change, icon: Icon, color }: { label: string; value: string; change?: number; icon: React.ElementType; color: string }) {
+  return (
+    <div className="glass-panel p-5 rounded-xl">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs text-slate-400 uppercase tracking-wider">{label}</span>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
+          <Icon className="w-4 h-4" />
+        </div>
+      </div>
+      <div className="text-2xl font-display font-bold text-white">{value}</div>
+      {change !== undefined && (
+        <div className={`text-xs mt-1 font-medium ${change >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+          {change >= 0 ? "+" : ""}{change}% vs prev period
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Analytics() {
-  const { data: overview, isLoading: overviewLoading } = useGetAnalyticsOverview({ projectId: PROJECT_ID, period: '30d' });
-  const { data: topPages, isLoading: pagesLoading } = useGetTopPages({ projectId: PROJECT_ID, limit: 5 });
-  const { data: sources, isLoading: sourcesLoading } = useGetTrafficSources({ projectId: PROJECT_ID });
-  const { toast } = useToast();
-  const [exporting, setExporting] = useState(false);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [pages, setPages] = useState<TopPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState(30);
 
-  if (overviewLoading || pagesLoading || sourcesLoading) return <PageLoader />;
-  if (!overview || !topPages || !sources) return <ErrorState />;
-
-  const handleExportSheets = async () => {
-    setExporting(true);
+  const load = async () => {
+    setLoading(true);
     try {
-      const result = await exportToSheets('analytics', PROJECT_ID);
-      if (result.success) {
-        toast({ title: "Exported to Google Sheets", description: "Analytics data exported successfully." });
-        if (result.spreadsheetUrl) window.open(result.spreadsheetUrl, '_blank');
-      } else {
-        toast({ title: "Export failed", description: result.error, variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Export failed", description: "Could not export analytics.", variant: "destructive" });
-    } finally {
-      setExporting(false);
-    }
+      const [ov, pg] = await Promise.all([
+        fetch(`${BASE}/api/analytics/overview?projectId=${PROJECT_ID}&days=${days}`).then(r => r.json()),
+        fetch(`${BASE}/api/analytics/pages?projectId=${PROJECT_ID}`).then(r => r.json()),
+      ]);
+      setOverview(ov);
+      setPages(Array.isArray(pg) ? pg : []);
+    } catch { /* silent */ }
+    setLoading(false);
   };
+
+  useEffect(() => { load(); }, [days]);
 
   return (
     <div className="space-y-8 pb-12">
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white">Analytics</h1>
-          <p className="text-slate-400 mt-1">Deep dive into your website performance.</p>
+          <h1 className="text-3xl font-display font-bold text-white flex items-center gap-3">
+            <BarChart3 className="w-8 h-8 text-primary" />
+            Analytics
+          </h1>
+          <p className="text-slate-400 mt-1">Real website tracking data from your embedded SDK.</p>
         </div>
-        <button
-          onClick={handleExportSheets}
-          disabled={exporting}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-lg shadow-emerald-900/30"
-        >
-          {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sheet className="w-4 h-4" />}
-          Export to Sheets
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 bg-slate-900/50 p-1 rounded-xl border border-slate-800">
+            {[7, 14, 30].map(d => (
+              <button key={d} onClick={() => setDays(d)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${days === d ? "bg-primary text-white" : "text-slate-400 hover:text-white"}`}>
+                {d}d
+              </button>
+            ))}
+          </div>
+          <button onClick={load} disabled={loading}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl text-sm transition-all border border-slate-700">
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[
-          { label: "Total Sessions", value: overview.sessions.toLocaleString() },
-          { label: "Unique Visitors", value: overview.visitors.toLocaleString() },
-          { label: "Page Views", value: overview.pageViews.toLocaleString() },
-          { label: "Bounce Rate", value: `${(overview.bounceRate * 100).toFixed(1)}%` },
-          { label: "Avg Duration", value: `${Math.floor(overview.avgSessionDuration / 60)}m ${overview.avgSessionDuration % 60}s` },
-          { label: "New vs Returning", value: `${Math.round((overview.newVisitors / overview.visitors) * 100)}% / ${Math.round((overview.returningVisitors / overview.visitors) * 100)}%` },
-        ].map(stat => (
-          <div key={stat.label} className="glass-panel p-4 rounded-xl text-center">
-            <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{stat.label}</div>
-            <div className="text-xl font-display font-bold text-white">{stat.value}</div>
+      {/* Tracking SDK setup banner */}
+      {overview && !overview.hasRealData && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+          <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <ExternalLink className="w-4 h-4 text-amber-400" />
           </div>
-        ))}
-      </div>
+          <div>
+            <div className="text-sm font-semibold text-amber-300 mb-1">No tracking data yet</div>
+            <p className="text-xs text-amber-400/80">
+              Add this snippet to your website's <code className="bg-amber-500/10 px-1 rounded">&lt;head&gt;</code> to start collecting real data:
+            </p>
+            <code className="block mt-2 text-[11px] bg-slate-900 text-emerald-400 p-3 rounded-lg border border-slate-800 font-mono break-all">
+              {`<script src="${BASE}/api/tracking.js?id=YOUR_TRACKING_ID" async></script>`}
+            </code>
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="glass-panel p-5 rounded-xl h-24 animate-pulse bg-slate-800/50" />
+          ))}
+        </div>
+      ) : overview ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard label="Unique Visitors" value={overview.visitors.toLocaleString()} change={overview.visitorsChange} icon={Users} color="bg-primary/10 text-primary" />
+          <StatCard label="Page Views" value={overview.pageViews.toLocaleString()} change={overview.pageViewsChange} icon={Eye} color="bg-violet-500/10 text-violet-400" />
+          <StatCard label="Live Right Now" value={overview.activeVisitors.toLocaleString()} icon={TrendingUp} color="bg-emerald-500/10 text-emerald-400" />
+          <StatCard label="Bounce Rate" value={`${overview.bounceRate}%`} change={overview.bounceRateChange} icon={Clock} color="bg-amber-500/10 text-amber-400" />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Pages */}
         <div className="glass-panel p-6 rounded-2xl">
-          <h3 className="text-lg font-display font-bold text-white mb-6">Traffic Sources</h3>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={sources}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={80}
-                  outerRadius={110}
-                  paddingAngle={5}
-                  dataKey="visitors"
-                  nameKey="source"
-                  stroke="none"
-                >
-                  {sources.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '12px', color: 'white' }}
-                />
-                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ color: 'hsl(var(--muted-foreground))' }} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-display font-bold text-white">Top Pages</h3>
+            <Link href="/heatmaps" className="text-xs text-primary hover:underline flex items-center gap-1">
+              <MousePointer className="w-3 h-3" /> View Heatmaps
+            </Link>
           </div>
+          {pages.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-slate-500 text-sm">
+              No page view data yet. Install the tracking SDK to start collecting data.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pages.map((p, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500 w-4 text-right">{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-slate-200 truncate">{p.path}</div>
+                    <div className="text-xs text-slate-500">{p.uniqueVisitors} unique visitors</div>
+                  </div>
+                  <span className="text-sm font-bold text-white">{p.views.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="glass-panel p-6 rounded-2xl overflow-hidden flex flex-col">
-          <h3 className="text-lg font-display font-bold text-white mb-6">Top Pages</h3>
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-400 uppercase bg-slate-900/50">
-                <tr>
-                  <th className="px-4 py-3 rounded-tl-lg">Page Path</th>
-                  <th className="px-4 py-3 text-right">Views</th>
-                  <th className="px-4 py-3 text-right rounded-tr-lg">Bounce</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {topPages.map((page) => (
-                  <tr key={page.path} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-4 font-medium text-slate-200">
-                      {page.path}
-                      <div className="text-xs text-slate-500 font-normal truncate max-w-[200px]">{page.title}</div>
-                    </td>
-                    <td className="px-4 py-4 text-right text-slate-300">{page.views.toLocaleString()}</td>
-                    <td className="px-4 py-4 text-right text-slate-300">{(page.bounceRate * 100).toFixed(1)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* SDK embed instructions */}
+        <div className="glass-panel p-6 rounded-2xl">
+          <h3 className="text-lg font-display font-bold text-white mb-4">Tracking SDK</h3>
+          <p className="text-sm text-slate-400 mb-4">Embed this snippet in your website to track visitors, page views, clicks, and custom events.</p>
+          <div className="space-y-3">
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Auto-track pageviews + clicks</div>
+              <code className="block text-[11px] bg-slate-900 text-emerald-400 p-3 rounded-lg border border-slate-800 font-mono break-all leading-relaxed">
+                {`<script src="${BASE}/api/tracking.js?id=YOUR_ID" async></script>`}
+              </code>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Custom events (optional)</div>
+              <code className="block text-[11px] bg-slate-900 text-blue-400 p-3 rounded-lg border border-slate-800 font-mono leading-relaxed whitespace-pre">
+{`// Track conversion
+ChiefMKT.track("signup", { plan: "pro" });
+
+// Track purchase
+ChiefMKT.track("purchase", { value: 99 });`}
+              </code>
+            </div>
+          </div>
+          <div className="mt-4 p-3 rounded-lg bg-slate-900/50 border border-slate-800">
+            <div className="text-xs text-slate-500 mb-1">Your tracking ID is on the</div>
+            <Link href="/integrations" className="text-xs text-primary hover:underline">Integrations page →</Link>
           </div>
         </div>
       </div>

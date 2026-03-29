@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useResearchKeywords, useGetSavedKeywords } from "@workspace/api-client-react";
+import { useResearchKeywords, useGetSavedKeywords, useSaveKeyword, useDeleteKeyword } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
 import { Search, TrendingUp, ArrowRight, Bookmark, Download, Sheet, RefreshCw } from "lucide-react";
 import { formatNumber, formatCurrency } from "@/lib/utils";
@@ -11,9 +11,37 @@ const PROJECT_ID = 1;
 export default function Keywords() {
   const [topic, setTopic] = useState("");
   const { mutate: research, isPending, data: results } = useResearchKeywords();
-  const { data: saved, isLoading: savedLoading } = useGetSavedKeywords({ projectId: PROJECT_ID });
+  const { data: saved, isLoading: savedLoading, refetch: refetchSaved } = useGetSavedKeywords({ projectId: PROJECT_ID });
+  const { mutate: saveKeyword, isPending: saving } = useSaveKeyword();
+  const { mutate: deleteKeyword } = useDeleteKeyword();
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const handleSaveKeyword = (kw: { keyword: string; searchVolume: number; difficulty: number; cpc: number; trend: string; intent: string }) => {
+    setSavingId(kw.keyword);
+    saveKeyword(
+      { data: { projectId: PROJECT_ID, ...kw } },
+      {
+        onSuccess: () => {
+          toast({ title: "Keyword saved", description: `"${kw.keyword}" added to your saved list.` });
+          refetchSaved();
+        },
+        onError: () => toast({ title: "Save failed", variant: "destructive" }),
+        onSettled: () => setSavingId(null),
+      }
+    );
+  };
+
+  const handleDeleteKeyword = (id: number) => {
+    deleteKeyword(
+      { id },
+      {
+        onSuccess: () => { toast({ title: "Keyword removed" }); refetchSaved(); },
+        onError: () => toast({ title: "Delete failed", variant: "destructive" }),
+      }
+    );
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +162,11 @@ export default function Keywords() {
                         <TrendingUp className={`w-4 h-4 mx-auto ${kw.trend === 'rising' ? 'text-emerald-400' : kw.trend === 'falling' ? 'text-rose-400' : 'text-slate-500'}`} />
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="text-slate-500 hover:text-primary opacity-0 group-hover:opacity-100 transition-all">
+                        <button
+                          onClick={() => handleSaveKeyword(kw)}
+                          disabled={savingId === kw.keyword}
+                          className="text-slate-500 hover:text-primary opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                        >
                           <Bookmark className="w-4 h-4" />
                         </button>
                       </td>
@@ -152,26 +184,44 @@ export default function Keywords() {
           <h2 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
             <Bookmark className="w-5 h-5 text-primary" /> Saved Keywords
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {saved.map(kw => (
-              <div key={kw.id} className="glass-panel p-5 rounded-xl border border-slate-800">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-slate-200">{kw.keyword}</h3>
-                  <div className="text-xs text-slate-500">{new Date(kw.savedAt).toLocaleDateString()}</div>
-                </div>
-                <div className="flex gap-4 mt-4">
-                  <div>
-                    <div className="text-xs text-slate-500 uppercase tracking-wide">Vol</div>
-                    <div className="font-medium text-slate-300">{formatNumber(kw.searchVolume)}</div>
+          {saved.length === 0 ? (
+            <p className="text-slate-500 text-sm">No saved keywords yet. Research a topic and click the bookmark icon to save keywords.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {saved.map(kw => (
+                <div key={kw.id} className="glass-panel p-5 rounded-xl border border-slate-800 group">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-slate-200">{kw.keyword}</h3>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-slate-500">{new Date(kw.createdAt).toLocaleDateString()}</div>
+                      <button
+                        onClick={() => handleDeleteKeyword(kw.id)}
+                        className="text-slate-600 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs text-slate-500 uppercase tracking-wide">KD</div>
-                    <div className="font-medium text-slate-300">{kw.difficulty}</div>
+                  <div className="flex gap-4 mt-4">
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase tracking-wide">Vol</div>
+                      <div className="font-medium text-slate-300">{formatNumber(kw.searchVolume ?? 0)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase tracking-wide">KD</div>
+                      <div className="font-medium text-slate-300">{kw.difficulty ?? '—'}</div>
+                    </div>
+                    {kw.intent && (
+                      <div>
+                        <div className="text-xs text-slate-500 uppercase tracking-wide">Intent</div>
+                        <div className="font-medium text-slate-300 capitalize">{kw.intent}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

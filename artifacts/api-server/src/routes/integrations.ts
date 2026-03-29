@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, emailCampaignsTable, contentHistoryTable, seoReportsTable, integrationStatesTable } from "@workspace/db/schema";
+import { leadsTable, emailCampaignsTable, contentHistoryTable, seoReportsTable, integrationStatesTable, keywordsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { getAllConnectionStatuses, checkConnectionStatus } from "../integrations/client.js";
 import { syncLeadToHubSpot } from "../integrations/hubspot.js";
@@ -32,13 +32,13 @@ router.get("/integrations/status", async (_req, res) => {
 
 router.post("/integrations/connect/:service", async (req, res) => {
   const { service } = req.params;
-  const replitConnected = await checkConnectionStatus(service);
+  const isConnected = await checkConnectionStatus(service);
 
-  if (!replitConnected) {
+  if (!isConnected) {
     res.json({
       connected: false,
       service,
-      message: `${service} is not yet authorized. Ask the AI assistant to connect it, or authorize it in the Replit integrations panel.`,
+      message: `${service} is not configured. Set the required environment variable(s) in your Railway dashboard to enable this integration.`,
     });
     return;
   }
@@ -203,11 +203,16 @@ router.post("/integrations/sheets/export", async (req, res) => {
       { Metric: 'Returning Visitors', Value: 8658 },
     ];
   } else if (type === 'keywords') {
-    rows = [
-      { Keyword: 'marketing automation', Volume: 18100, Difficulty: 72, CPC: '$8.40', Trend: 'rising' },
-      { Keyword: 'best seo tools', Volume: 9900, Difficulty: 58, CPC: '$6.20', Trend: 'rising' },
-      { Keyword: 'email marketing platform', Volume: 33100, Difficulty: 81, CPC: '$12.60', Trend: 'stable' },
-    ];
+    const keywords = await db.select().from(keywordsTable).where(eq(keywordsTable.projectId, projectId ?? 1)).limit(500);
+    rows = keywords.map(k => ({
+      Keyword: k.keyword,
+      Volume: k.searchVolume ?? '',
+      Difficulty: k.difficulty ?? '',
+      CPC: k.cpc ? `$${k.cpc.toFixed(2)}` : '',
+      Trend: k.trend ?? '',
+      Intent: k.intent ?? '',
+      Saved: new Date(k.createdAt).toLocaleDateString(),
+    }));
   }
 
   if (rows.length === 0) {

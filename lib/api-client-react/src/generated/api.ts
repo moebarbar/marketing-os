@@ -33,6 +33,7 @@ import type {
   CreateProjectRequest,
   CreateSocialPostRequest,
   DashboardOverview,
+  DeleteKeyword200,
   EmailCampaign,
   Funnel,
   FunnelData,
@@ -60,6 +61,7 @@ import type {
   ListSocialPostsParams,
   PageAnalytics,
   Project,
+  SaveKeywordRequest,
   SavedKeyword,
   SeoAnalysis,
   SeoAnalyzeRequest,
@@ -1224,7 +1226,7 @@ export const useResearchKeywords = <
 };
 
 /**
- * @summary Get saved keyword lists
+ * @summary Get saved keywords
  */
 export const getGetSavedKeywordsUrl = (params: GetSavedKeywordsParams) => {
   const normalizedParams = new URLSearchParams();
@@ -1294,7 +1296,7 @@ export type GetSavedKeywordsQueryResult = NonNullable<
 export type GetSavedKeywordsQueryError = ErrorType<unknown>;
 
 /**
- * @summary Get saved keyword lists
+ * @summary Get saved keywords
  */
 
 export function useGetSavedKeywords<
@@ -1319,6 +1321,176 @@ export function useGetSavedKeywords<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Save a keyword
+ */
+export const getSaveKeywordUrl = () => {
+  return `/api/keywords/saved`;
+};
+
+export const saveKeyword = async (
+  saveKeywordRequest: SaveKeywordRequest,
+  options?: RequestInit,
+): Promise<SavedKeyword> => {
+  return customFetch<SavedKeyword>(getSaveKeywordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(saveKeywordRequest),
+  });
+};
+
+export const getSaveKeywordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveKeyword>>,
+    TError,
+    { data: BodyType<SaveKeywordRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveKeyword>>,
+  TError,
+  { data: BodyType<SaveKeywordRequest> },
+  TContext
+> => {
+  const mutationKey = ["saveKeyword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveKeyword>>,
+    { data: BodyType<SaveKeywordRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveKeyword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveKeywordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveKeyword>>
+>;
+export type SaveKeywordMutationBody = BodyType<SaveKeywordRequest>;
+export type SaveKeywordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a keyword
+ */
+export const useSaveKeyword = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveKeyword>>,
+    TError,
+    { data: BodyType<SaveKeywordRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveKeyword>>,
+  TError,
+  { data: BodyType<SaveKeywordRequest> },
+  TContext
+> => {
+  return useMutation(getSaveKeywordMutationOptions(options));
+};
+
+/**
+ * @summary Delete a saved keyword
+ */
+export const getDeleteKeywordUrl = (id: number) => {
+  return `/api/keywords/saved/${id}`;
+};
+
+export const deleteKeyword = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteKeyword200> => {
+  return customFetch<DeleteKeyword200>(getDeleteKeywordUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteKeywordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteKeyword>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteKeyword>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteKeyword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteKeyword>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteKeyword(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteKeywordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteKeyword>>
+>;
+
+export type DeleteKeywordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a saved keyword
+ */
+export const useDeleteKeyword = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteKeyword>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteKeyword>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteKeywordMutationOptions(options));
+};
 
 /**
  * @summary Generate AI content

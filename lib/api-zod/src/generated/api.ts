@@ -243,7 +243,7 @@ export const ResearchKeywordsResponse = zod.object({
 });
 
 /**
- * @summary Get saved keyword lists
+ * @summary Get saved keywords
  */
 export const GetSavedKeywordsQueryParams = zod.object({
   projectId: zod.coerce.number(),
@@ -251,12 +251,40 @@ export const GetSavedKeywordsQueryParams = zod.object({
 
 export const GetSavedKeywordsResponseItem = zod.object({
   id: zod.number(),
+  projectId: zod.number(),
   keyword: zod.string(),
-  searchVolume: zod.number(),
-  difficulty: zod.number(),
-  savedAt: zod.date(),
+  searchVolume: zod.number().optional(),
+  difficulty: zod.number().optional(),
+  cpc: zod.number().optional(),
+  trend: zod.string().optional(),
+  intent: zod.string().optional(),
+  createdAt: zod.date(),
 });
 export const GetSavedKeywordsResponse = zod.array(GetSavedKeywordsResponseItem);
+
+/**
+ * @summary Save a keyword
+ */
+export const SaveKeywordBody = zod.object({
+  projectId: zod.number(),
+  keyword: zod.string(),
+  searchVolume: zod.number().optional(),
+  difficulty: zod.number().optional(),
+  cpc: zod.number().optional(),
+  trend: zod.string().optional(),
+  intent: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a saved keyword
+ */
+export const DeleteKeywordParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteKeywordResponse = zod.object({
+  success: zod.boolean().optional(),
+});
 
 /**
  * @summary Generate AI content

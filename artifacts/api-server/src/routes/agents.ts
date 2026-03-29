@@ -108,6 +108,20 @@ router.get("/agent/sessions/:projectId", async (req: Request, res: Response) => 
   return res.json(sessions);
 });
 
+// Add a memory entry manually
+router.post("/agent/memory", async (req: Request, res: Response) => {
+  const { projectId, key, value, category, importance } = req.body;
+  const [entry] = await db
+    .insert(agentMemory)
+    .values({ projectId: parseInt(projectId ?? "1"), key, value, category: category ?? "BUSINESS_CORE", importance: importance ?? 5 })
+    .onConflictDoUpdate({
+      target: [agentMemory.projectId, agentMemory.key],
+      set: { value, importance: importance ?? 5, updatedAt: new Date() },
+    })
+    .returning();
+  return res.json(entry);
+});
+
 // Get all business memory
 router.get("/agent/memory/:projectId", async (req: Request, res: Response) => {
   const memories = await db
@@ -117,6 +131,16 @@ router.get("/agent/memory/:projectId", async (req: Request, res: Response) => {
     .orderBy(desc(agentMemory.importance));
 
   return res.json(memories);
+});
+
+// Update a memory entry
+router.patch("/agent/memory/:id", async (req: Request, res: Response) => {
+  const { value, importance } = req.body;
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (value !== undefined) updates.value = value;
+  if (importance !== undefined) updates.importance = importance;
+  await db.update(agentMemory).set(updates).where(eq(agentMemory.id, req.params.id));
+  return res.json({ updated: true });
 });
 
 // Delete a memory entry

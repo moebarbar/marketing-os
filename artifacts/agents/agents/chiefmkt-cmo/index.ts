@@ -1,6 +1,6 @@
 import { agent, tool } from "@21st-sdk/agent";
 import { z } from "zod";
-import { rememberFact, recallContext, getLiveData, saveContent } from "../../lib/memory.js";
+import { rememberFact, recallContext, getLiveData, saveContent, updateMemory, deleteMemory, getRecentActivity, createSocialPost, getFullDashboard } from "../../lib/memory.js";
 
 const PROJECT_ID = parseInt(process.env.PROJECT_ID ?? "1");
 
@@ -136,6 +136,68 @@ You are their dedicated CMO. Act like it.`,
         await saveContent(PROJECT_ID, type, title, content);
         return {
           content: [{ type: "text" as const, text: `Saved to content history: ${title}` }],
+        };
+      },
+    }),
+
+    update_memory: tool({
+      description: "Correct or update an existing stored fact. Use when the user says something has changed or a previous fact was wrong.",
+      inputSchema: z.object({
+        key: z.string().describe("The exact key of the fact to update"),
+        newValue: z.string().describe("The corrected or updated value"),
+      }),
+      execute: async ({ key, newValue }) => {
+        await updateMemory(PROJECT_ID, key, newValue);
+        return { content: [{ type: "text" as const, text: `Updated memory: ${key}` }] };
+      },
+    }),
+
+    delete_memory: tool({
+      description: "Permanently remove a stored fact that is no longer relevant or was incorrect.",
+      inputSchema: z.object({
+        key: z.string().describe("The exact key of the fact to delete"),
+      }),
+      execute: async ({ key }) => {
+        await deleteMemory(PROJECT_ID, key);
+        return { content: [{ type: "text" as const, text: `Deleted memory: ${key}` }] };
+      },
+    }),
+
+    list_recent_activity: tool({
+      description: "Show what happened in the last N days — new leads, content created, SEO reports run.",
+      inputSchema: z.object({
+        days: z.number().min(1).max(30).default(7).describe("How many days back to look"),
+      }),
+      execute: async ({ days }) => {
+        const activity = await getRecentActivity(PROJECT_ID, days);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(activity, null, 2) }],
+        };
+      },
+    }),
+
+    create_social_post: tool({
+      description: "Save a social post to the platform scheduler. Call after writing a social post so it appears in Social Media and can be scheduled.",
+      inputSchema: z.object({
+        content: z.string().describe("The full post text"),
+        platforms: z.array(z.enum(["linkedin", "twitter", "instagram", "facebook"])).describe("Which platforms to post to"),
+        scheduledAt: z.string().optional().describe("ISO date string for when to post, e.g. 2026-04-01T09:00:00Z. Omit for draft."),
+      }),
+      execute: async ({ content, platforms, scheduledAt }) => {
+        const post = await createSocialPost(PROJECT_ID, content, platforms, scheduledAt ? new Date(scheduledAt) : undefined);
+        return {
+          content: [{ type: "text" as const, text: `Social post saved (ID: ${post.id}) — ${scheduledAt ? `scheduled for ${scheduledAt}` : "draft"}` }],
+        };
+      },
+    }),
+
+    get_full_dashboard: tool({
+      description: "Pull a complete snapshot of all marketing metrics — leads, content, campaigns, social posts, SEO. Use for weekly reports or overview questions.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const dashboard = await getFullDashboard(PROJECT_ID);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(dashboard, null, 2) }],
         };
       },
     }),

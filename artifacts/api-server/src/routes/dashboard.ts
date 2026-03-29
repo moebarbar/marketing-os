@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, contentHistoryTable } from "@workspace/db/schema";
+import { leadsTable, contentHistoryTable, seoReportsTable, emailCampaignsTable } from "@workspace/db/schema";
 import { count, gte, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -68,59 +68,103 @@ router.get("/dashboard/visitors", async (req, res) => {
   res.json({ data });
 });
 
-router.get("/ai/recommendations", async (_req, res) => {
-  res.json([
-    {
-      id: 1,
+router.get("/ai/recommendations", async (req, res) => {
+  const projectId = parseInt(req.query.projectId as string) || 1;
+
+  const [
+    [{ totalLeads }],
+    [{ totalContent }],
+    [{ totalCampaigns }],
+    seoReports,
+  ] = await Promise.all([
+    db.select({ totalLeads: count() }).from(leadsTable).where(sql`${leadsTable.projectId} = ${projectId}`),
+    db.select({ totalContent: count() }).from(contentHistoryTable).where(sql`${contentHistoryTable.projectId} = ${projectId}`),
+    db.select({ totalCampaigns: count() }).from(emailCampaignsTable).where(sql`${emailCampaignsTable.projectId} = ${projectId}`),
+    db.select({ score: seoReportsTable.score }).from(seoReportsTable)
+      .where(sql`${seoReportsTable.projectId} = ${projectId}`)
+      .orderBy(seoReportsTable.createdAt)
+      .limit(1),
+  ]);
+
+  const latestSeoScore = seoReports[0]?.score ?? null;
+  const recommendations = [];
+  let id = 1;
+
+  if (latestSeoScore !== null && latestSeoScore < 70) {
+    recommendations.push({
+      id: id++,
       category: "seo",
       priority: "high",
-      title: "Fix 12 missing meta descriptions",
-      description: "12 pages on your site are missing meta descriptions, reducing click-through rates from search results.",
-      estimatedImpact: "+15% organic CTR",
+      title: `Your latest SEO score is ${latestSeoScore}/100`,
+      description: "Your site has critical SEO issues holding back organic traffic. Run a full audit to identify and fix them.",
+      estimatedImpact: "+20% organic traffic",
       action: "Go to SEO Analyzer",
       isCompleted: false,
-    },
-    {
-      id: 2,
-      category: "conversion",
+    });
+  }
+
+  if (Number(totalLeads) === 0) {
+    recommendations.push({
+      id: id++,
+      category: "leads",
       priority: "high",
-      title: "High bounce rate on /pricing page",
-      description: "Your pricing page has a 72% bounce rate. Consider adding social proof or simplifying the pricing structure.",
-      estimatedImpact: "+8% conversion rate",
-      action: "Run A/B Test",
+      title: "No leads captured yet",
+      description: "Add your first leads to start tracking your pipeline and scoring prospects.",
+      estimatedImpact: "Build your sales pipeline",
+      action: "Go to Leads",
       isCompleted: false,
-    },
-    {
-      id: 3,
+    });
+  } else if (Number(totalCampaigns) === 0) {
+    recommendations.push({
+      id: id++,
+      category: "traffic",
+      priority: "high",
+      title: "You have leads but no email campaigns",
+      description: `You have ${totalLeads} lead(s) but no email campaigns. Start nurturing them to convert more.`,
+      estimatedImpact: "+30% lead conversion",
+      action: "Create Email Campaign",
+      isCompleted: false,
+    });
+  }
+
+  if (Number(totalContent) < 3) {
+    recommendations.push({
+      id: id++,
       category: "content",
       priority: "medium",
-      title: "Publish 3 blog posts targeting top keywords",
-      description: "Your keyword research shows high-volume, low-competition keywords with no content targeting them.",
+      title: "Generate more content to rank for keywords",
+      description: "Publishing more content targeting your key topics helps build organic authority and attract visitors.",
       estimatedImpact: "+2,400 monthly visitors",
       action: "Generate Content",
       isCompleted: false,
-    },
-    {
-      id: 4,
-      category: "traffic",
+    });
+  }
+
+  if (latestSeoScore === null) {
+    recommendations.push({
+      id: id++,
+      category: "seo",
       priority: "medium",
-      title: "Set up email nurture sequence",
-      description: "You're capturing leads but not nurturing them. An automated email sequence could recover 30% of lost leads.",
-      estimatedImpact: "+30% lead conversion",
-      action: "Create Email Campaign",
-      isCompleted: true,
-    },
-    {
-      id: 5,
-      category: "engagement",
-      priority: "low",
-      title: "Enable chat widget on high-intent pages",
-      description: "Your /demo and /pricing pages have high-intent visitors but no chat widget to convert them.",
-      estimatedImpact: "+12% demo requests",
-      action: "Configure Chat Widget",
+      title: "Run your first SEO audit",
+      description: "You haven't analyzed your site yet. An SEO audit reveals quick wins to boost your search rankings.",
+      estimatedImpact: "Identify top issues fast",
+      action: "Go to SEO Analyzer",
       isCompleted: false,
-    },
-  ]);
+    });
+  }
+
+  recommendations.push({
+    id: id++,
+    category: "engagement",
+    priority: "low",
+    title: "Enable chat widget on high-intent pages",
+    description: "Add a chat widget to your /pricing and /demo pages to capture high-intent visitors in real time.",
+    estimatedImpact: "+12% demo requests",
+    action: "Configure Chat Widget",
+    isCompleted: false,
+  });
+
+  res.json(recommendations);
 });
 
 export default router;

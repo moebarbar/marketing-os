@@ -30,4 +30,23 @@ router.post("/social/posts", async (req, res) => {
   res.status(201).json(post);
 });
 
+// PATCH /social/posts/:id/publish — mark as published immediately
+router.patch("/social/posts/:id/publish", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [post] = await db
+    .update(socialPostsTable)
+    .set({ status: "published", scheduledAt: new Date() })
+    .where(eq(socialPostsTable.id, id))
+    .returning();
+  if (!post) return res.status(404).json({ error: "Post not found" });
+  return res.json(post);
+});
+
+// DELETE /social/posts/:id
+router.delete("/social/posts/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  await db.delete(socialPostsTable).where(eq(socialPostsTable.id, id));
+  return res.json({ ok: true });
+});
+
 export default router;

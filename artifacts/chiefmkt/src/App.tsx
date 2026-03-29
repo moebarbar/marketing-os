@@ -1,8 +1,10 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { Onboarding, useOnboarding } from "@/components/Onboarding";
 import NotFound from "@/pages/not-found";
 
 import Dashboard from "@/pages/Dashboard";
@@ -25,6 +27,10 @@ import ChatWidget from "@/pages/ChatWidget";
 import Integrations from "@/pages/Integrations";
 import Pricing from "@/pages/Pricing";
 import Billing from "@/pages/Billing";
+import MemoryPage from "@/pages/Memory";
+import ActivityPage from "@/pages/Activity";
+import LoginPage from "@/pages/Login";
+import HeatmapsPage from "@/pages/Heatmaps";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,7 +42,33 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router() {
+function AppRoutes() {
+  const { user, loading } = useAuth();
+  const [location, setLocation] = useLocation();
+  const { showOnboarding, completeOnboarding } = useOnboarding();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Show login if not authenticated (and not already on login page)
+  if (!user && location !== "/login") {
+    return <LoginPage />;
+  }
+
+  if (location === "/login") {
+    return <LoginPage />;
+  }
+
+  // Show onboarding on first run
+  if (showOnboarding) {
+    return <Onboarding onComplete={completeOnboarding} />;
+  }
+
   return (
     <AppLayout>
       <Switch>
@@ -60,6 +92,9 @@ function Router() {
         <Route path="/integrations" component={Integrations} />
         <Route path="/pricing" component={Pricing} />
         <Route path="/billing" component={Billing} />
+        <Route path="/memory" component={MemoryPage} />
+        <Route path="/activity" component={ActivityPage} />
+        <Route path="/heatmaps" component={HeatmapsPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
@@ -70,9 +105,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <AppRoutes />
+          </WouterRouter>
+        </AuthProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

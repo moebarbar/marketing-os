@@ -3,12 +3,48 @@ import {
   LayoutDashboard, BarChart3, LineChart, Search,
   PenTool, Filter, SplitSquareHorizontal, Users,
   Mail, Share2, Target, MessageSquare, Zap, Plug,
-  CreditCard, Bot, FileText, TrendingUp
+  CreditCard, Bot, FileText, TrendingUp, Brain, Activity, LogOut, Flame
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+
+function LiveVisitorWidget() {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const r = await fetch(`${BASE}/api/analytics/realtime/count?projectId=1`);
+        const d = await r.json();
+        setCount(d.liveVisitors ?? 0);
+      } catch { /* silent */ }
+    };
+    poll();
+    const iv = setInterval(poll, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  return (
+    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-4 border border-slate-700/50 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full blur-xl animate-pulse" />
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <div className="w-3 h-3 bg-green-500 rounded-full animate-ping absolute" />
+          <div className="w-3 h-3 bg-green-500 rounded-full relative" />
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Live Visitors</div>
+          <div className="text-2xl font-display font-bold text-slate-50">
+            {count === null ? "—" : count.toLocaleString()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const AGENT_ITEMS = [
   { icon: Zap, label: "CMO Agent", href: "/agent/cmo" },
@@ -31,6 +67,9 @@ const NAV_ITEMS = [
   { icon: LineChart, label: "Competitors", href: "/competitors" },
   { icon: MessageSquare, label: "Chat Widget", href: "/chat-widget" },
   { icon: Plug, label: "Integrations", href: "/integrations" },
+  { icon: Flame, label: "Heatmaps", href: "/heatmaps" },
+  { icon: Brain, label: "Agent Memory", href: "/memory" },
+  { icon: Activity, label: "Activity Feed", href: "/activity" },
   { icon: CreditCard, label: "Billing", href: "/billing" },
 ];
 
@@ -43,6 +82,7 @@ const PLAN_LABELS: Record<string, { label: string; color: string }> = {
 export function Sidebar() {
   const [location] = useLocation();
   const [plan, setPlan] = useState<string | null>(null);
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     fetch(`${BASE}/api/stripe/subscription?projectId=1`)
@@ -146,25 +186,24 @@ export function Sidebar() {
       </div>
 
       <div className="p-4 border-t border-card-border space-y-3">
+        {user && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-card/50 border border-card-border">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">{user.name ?? user.email}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+            </div>
+            <button onClick={logout} className="ml-2 p-1.5 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors flex-shrink-0" title="Sign out">
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         {planMeta && (
           <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold ${planMeta.color}`}>
             <CreditCard className="w-3.5 h-3.5" />
             {planMeta.label}
           </div>
         )}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-4 border border-slate-700/50 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full blur-xl animate-pulse" />
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-ping absolute" />
-              <div className="w-3 h-3 bg-green-500 rounded-full relative" />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Live Visitors</div>
-              <div className="text-2xl font-display font-bold text-slate-50">1,432</div>
-            </div>
-          </div>
-        </div>
+        <LiveVisitorWidget />
       </div>
     </aside>
   );

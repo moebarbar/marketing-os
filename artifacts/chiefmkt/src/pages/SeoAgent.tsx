@@ -1,9 +1,9 @@
-import { AgentChat } from "@21st-sdk/react";
 import { useChat } from "@ai-sdk/react";
 import { useMemo } from "react";
 import { createSeoChat } from "@/lib/agents";
 import { useAgentSession } from "@/hooks/useAgentSession";
-import "@21st-sdk/react/styles.css";
+import { AgentChatShell } from "@/components/AgentChatShell";
+import { Bot } from "lucide-react";
 
 const QUICK_PROMPTS = [
   { label: "🔍 Full SEO audit", prompt: "Read my SEO reports and give me a complete prioritized audit. Rank every issue by impact × effort and include the exact fix for each." },
@@ -16,46 +16,30 @@ const QUICK_PROMPTS = [
   { label: "📊 Traffic forecast", prompt: "If I fix the top 3 SEO issues in my reports, what traffic increase should I expect? Give me a realistic estimate with reasoning." },
 ];
 
-interface Session {
-  sandboxId: string;
-  threadId: string;
-}
+interface Session { sandboxId: string; threadId: string; }
 
 function SeoAgentChat({ session, newSession }: { session: Session; newSession: () => void }) {
-  const chat = useMemo(
-    () => createSeoChat(session.sandboxId, session.threadId),
-    [session.sandboxId, session.threadId]
-  );
-
-  const { messages, handleSubmit, status, stop, error, setInput } =
-    useChat({ chat: chat as any });
+  const chat = useMemo(() => createSeoChat(session.sandboxId, session.threadId), [session.sandboxId, session.threadId]);
+  const { messages, input, handleSubmit, status, stop, setInput } = useChat({ chat: chat as any });
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border flex-shrink-0">
-        <div>
-          <h1 className="font-semibold text-sm text-foreground">SEO Agent</h1>
-          <p className="text-xs text-muted-foreground">Technical SEO specialist with access to your audit reports</p>
-        </div>
-        <button onClick={newSession} className="text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-accent">New chat</button>
-      </div>
-      <div className="flex gap-2 px-4 py-2 overflow-x-auto border-b border-border flex-shrink-0 scrollbar-hide">
-        {QUICK_PROMPTS.map((qp) => (
-          <button key={qp.label} onClick={() => setInput(qp.prompt)} className="whitespace-nowrap px-3 py-1.5 text-xs rounded-full border border-border bg-background hover:bg-accent transition-colors flex-shrink-0">
-            {qp.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 min-h-0">
-        <AgentChat messages={messages} onSend={() => handleSubmit()} status={status} onStop={stop} error={error ?? undefined} theme="cursor" />
-      </div>
-    </div>
+    <AgentChatShell
+      title="SEO Agent"
+      subtitle="Technical SEO specialist with access to your audit reports"
+      quickPrompts={QUICK_PROMPTS}
+      messages={messages}
+      input={input}
+      setInput={setInput}
+      handleSubmit={handleSubmit}
+      status={status}
+      stop={stop}
+      newSession={newSession}
+    />
   );
 }
 
 export default function SeoAgentPage() {
-  const { session, loading, error: sessionError, newSession } =
-    useAgentSession("chiefmkt-seo", 1);
+  const { session, loading, error: sessionError, newSession } = useAgentSession("chiefmkt-seo", 1);
 
   if (loading) {
     return (
@@ -72,6 +56,7 @@ export default function SeoAgentPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-3 max-w-sm">
+          <Bot className="w-10 h-10 text-muted-foreground mx-auto" />
           <p className="text-destructive text-sm">{sessionError}</p>
           <p className="text-muted-foreground text-xs">Add <code className="text-primary">API_KEY_21ST</code> to your .env to activate agents.</p>
         </div>

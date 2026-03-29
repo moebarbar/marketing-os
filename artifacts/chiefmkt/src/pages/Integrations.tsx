@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchIntegrationStatuses } from "@/lib/integrations-api";
-import { Plug, CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertCircle, LogOut, Copy, Check, Zap } from "lucide-react";
+import { Plug, CheckCircle2, XCircle, ExternalLink, RefreshCw, AlertCircle, LogOut, Copy, Check, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
@@ -13,8 +13,10 @@ const INTEGRATIONS = [
     description: "Sync leads as contacts in HubSpot CRM automatically.",
     icon: "🟠",
     category: "CRM",
-    docs: "https://developers.hubspot.com",
-    connectPrompt: "Please connect HubSpot to ChiefMKT so I can sync leads automatically.",
+    docs: "https://developers.hubspot.com/docs/api/crm/contacts",
+    envVars: [
+      { name: "HUBSPOT_ACCESS_TOKEN", hint: "Private App access token from HubSpot → Settings → Integrations → Private Apps" },
+    ],
   },
   {
     id: "sendgrid",
@@ -22,8 +24,11 @@ const INTEGRATIONS = [
     description: "Send email campaigns via SendGrid's delivery platform.",
     icon: "🔵",
     category: "Email",
-    docs: "https://sendgrid.com/docs",
-    connectPrompt: "Please connect SendGrid to ChiefMKT so I can send email campaigns.",
+    docs: "https://docs.sendgrid.com/ui/account-and-settings/api-keys",
+    envVars: [
+      { name: "SENDGRID_API_KEY", hint: "Full Access API key from SendGrid → Settings → API Keys" },
+      { name: "SENDGRID_FROM_EMAIL", hint: "Verified sender email address (e.g. you@yourdomain.com)" },
+    ],
   },
   {
     id: "resend",
@@ -31,8 +36,11 @@ const INTEGRATIONS = [
     description: "Deliver transactional and marketing emails via Resend.",
     icon: "⚫",
     category: "Email",
-    docs: "https://resend.com/docs",
-    connectPrompt: "Please connect Resend to ChiefMKT so I can send transactional emails.",
+    docs: "https://resend.com/docs/introduction",
+    envVars: [
+      { name: "RESEND_API_KEY", hint: "API key from resend.com → API Keys" },
+      { name: "RESEND_FROM_EMAIL", hint: "Verified sender e.g. ChiefMKT <hello@yourdomain.com>" },
+    ],
   },
   {
     id: "slack",
@@ -40,8 +48,10 @@ const INTEGRATIONS = [
     description: "Get instant alerts for hot leads, A/B test results, and more.",
     icon: "💬",
     category: "Notifications",
-    docs: "https://api.slack.com",
-    connectPrompt: "Please connect Slack to ChiefMKT so I can receive lead and campaign alerts.",
+    docs: "https://api.slack.com/messaging/webhooks",
+    envVars: [
+      { name: "SLACK_WEBHOOK_URL", hint: "Incoming Webhook URL from api.slack.com → Your Apps → Incoming Webhooks" },
+    ],
   },
   {
     id: "google-sheet",
@@ -49,8 +59,10 @@ const INTEGRATIONS = [
     description: "Export analytics, leads, and keyword data to spreadsheets.",
     icon: "🟢",
     category: "Export",
-    docs: "https://developers.google.com/sheets",
-    connectPrompt: "Please connect Google Sheets to ChiefMKT so I can export analytics and lead data.",
+    docs: "https://developers.google.com/sheets/api/guides/authorizing",
+    envVars: [
+      { name: "GOOGLE_SHEETS_ACCESS_TOKEN", hint: "OAuth2 access token with Sheets write scope — use a service account or OAuth playground for a long-lived token" },
+    ],
   },
   {
     id: "google-drive",
@@ -58,8 +70,10 @@ const INTEGRATIONS = [
     description: "Save SEO audit reports directly to Google Drive.",
     icon: "🟡",
     category: "Storage",
-    docs: "https://developers.google.com/drive",
-    connectPrompt: "Please connect Google Drive to ChiefMKT so I can save SEO reports.",
+    docs: "https://developers.google.com/drive/api/guides/about-auth",
+    envVars: [
+      { name: "GOOGLE_DRIVE_ACCESS_TOKEN", hint: "OAuth2 access token with Drive write scope" },
+    ],
   },
   {
     id: "notion",
@@ -67,8 +81,10 @@ const INTEGRATIONS = [
     description: "Push AI-generated content to Notion for editorial review.",
     icon: "⬛",
     category: "CMS",
-    docs: "https://developers.notion.com",
-    connectPrompt: "Please connect Notion to ChiefMKT so I can push generated content for review.",
+    docs: "https://developers.notion.com/docs/authorization",
+    envVars: [
+      { name: "NOTION_API_KEY", hint: "Internal Integration Secret from notion.so/my-integrations — share your target database with the integration" },
+    ],
   },
   {
     id: "box",
@@ -76,8 +92,10 @@ const INTEGRATIONS = [
     description: "Archive reports and content to Box cloud storage.",
     icon: "🔷",
     category: "Storage",
-    docs: "https://developer.box.com",
-    connectPrompt: "Please connect Box to ChiefMKT so I can archive reports to cloud storage.",
+    docs: "https://developer.box.com/guides/authentication/",
+    envVars: [
+      { name: "BOX_ACCESS_TOKEN", hint: "Developer Token from developer.box.com → My Apps → your app → Configuration" },
+    ],
   },
 ];
 
@@ -100,7 +118,7 @@ export default function Integrations() {
   const filtered = filter === "All" ? INTEGRATIONS : INTEGRATIONS.filter((i) => i.category === filter);
 
   const connectedCount = statuses
-    ? INTEGRATIONS.filter((i) => (statuses as Record<string, boolean>)[i.id]).length
+    ? INTEGRATIONS.filter((i) => (statuses as unknown as Record<string, boolean>)[i.id]).length
     : 0;
 
   const handleRefresh = () => {
@@ -119,6 +137,7 @@ export default function Integrations() {
       toast({ title: `${integration.name} connected`, description: "Integration is active and ready to use." });
     } else {
       setConnectTarget(integration);
+      queryClient.invalidateQueries({ queryKey: ["integration-statuses"] });
     }
   };
 
@@ -129,13 +148,6 @@ export default function Integrations() {
       [service]: false,
     }));
     toast({ title: `${name} disconnected`, description: "Integration has been disabled." });
-  };
-
-  const handleCopyPrompt = async () => {
-    if (!connectTarget) return;
-    await navigator.clipboard.writeText(connectTarget.connectPrompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -216,13 +228,13 @@ export default function Integrations() {
 
       <div className="glass-panel p-6 rounded-2xl border border-slate-800 bg-slate-900/50">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
           <div>
             <h3 className="font-bold text-white mb-1">How to connect an integration</h3>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Click <span className="text-primary font-medium">Connect</span> on any card to check its authorization status.
-              If not yet authorized, a dialog will appear with a ready-made prompt you can paste into the AI assistant to authorize it via OAuth.
-              Once authorized, click <span className="text-primary font-medium">Connect</span> again to activate the integration instantly.
+              Click <span className="text-primary font-medium">Connect</span> on any card. If not yet active, a dialog will show which environment variables to add.
+              Go to your <span className="text-white font-medium">Railway dashboard → your service → Variables</span>, add the required env vars, and redeploy.
+              Then click <span className="text-primary font-medium">Connect</span> again — the card will turn green instantly.
             </p>
           </div>
         </div>
@@ -230,7 +242,7 @@ export default function Integrations() {
 
       {connectTarget && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-panel rounded-2xl border border-slate-700 w-full max-w-md p-6 shadow-2xl">
+          <div className="glass-panel rounded-2xl border border-slate-700 w-full max-w-lg p-6 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <span className="text-3xl">{connectTarget.icon}</span>
               <div>
@@ -239,17 +251,30 @@ export default function Integrations() {
               </div>
             </div>
 
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 mb-4">
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-4">
               <div className="flex items-start gap-2">
-                <Zap className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-300">
-                  {connectTarget.name} requires OAuth authorization. Copy the prompt below and paste it into the AI assistant chat to authorize.
+                <Key className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-300">
+                  Add the following environment variable(s) to your <span className="font-semibold">Railway dashboard</span>, then click Connect to activate.
                 </p>
               </div>
             </div>
 
-            <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 mb-4">
-              <p className="text-sm text-slate-200 font-mono leading-relaxed">{connectTarget.connectPrompt}</p>
+            <div className="space-y-3 mb-5">
+              {connectTarget.envVars.map((ev) => (
+                <div key={ev.name} className="bg-slate-900 border border-slate-700 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <code className="text-sm font-bold text-primary">{ev.name}</code>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(ev.name); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                      className="text-slate-500 hover:text-white transition-colors"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">{ev.hint}</p>
+                </div>
+              ))}
             </div>
 
             <div className="flex gap-3">
@@ -257,22 +282,20 @@ export default function Integrations() {
                 onClick={() => setConnectTarget(null)}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white text-sm font-medium transition-colors"
               >
-                Cancel
+                Close
               </button>
-              <button
-                onClick={handleCopyPrompt}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              <a
+                href={connectTarget.docs}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {copied ? (
-                  <><Check className="w-4 h-4" /> Copied!</>
-                ) : (
-                  <><Copy className="w-4 h-4" /> Copy Prompt</>
-                )}
-              </button>
+                <ExternalLink className="w-4 h-4" /> View Docs
+              </a>
             </div>
 
             <p className="text-xs text-slate-500 text-center mt-3">
-              After authorizing, click <span className="text-primary">Connect</span> again on the card to activate.
+              After adding the env var in Railway → redeploy → click <span className="text-primary">Connect</span> on the card.
             </p>
           </div>
         </div>

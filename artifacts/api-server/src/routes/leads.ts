@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { leadsTable } from "@workspace/db/schema";
-import { eq, count } from "drizzle-orm";
+import { eq, count, and } from "drizzle-orm";
 import { syncLeadToHubSpot } from "../integrations/hubspot.js";
 import { notifyHighScoreLead } from "../integrations/slack.js";
 
@@ -53,6 +53,42 @@ router.post("/leads", async (req, res) => {
   ]);
 
   res.status(201).json(lead);
+});
+
+router.patch("/leads/:id", async (req, res) => {
+  const leadId = parseInt(req.params.id);
+  const projectId = parseInt(req.query.projectId as string) || req.body.projectId;
+  const { score, status, name, company } = req.body;
+
+  const updates: Record<string, unknown> = {};
+  if (score !== undefined) updates.score = score;
+  if (status !== undefined) updates.status = status;
+  if (name !== undefined) updates.name = name;
+  if (company !== undefined) updates.company = company;
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
+
+  const [lead] = await db
+    .update(leadsTable)
+    .set(updates)
+    .where(and(eq(leadsTable.id, leadId), eq(leadsTable.projectId, projectId)))
+    .returning();
+
+  if (!lead) return res.status(404).json({ error: "Lead not found" });
+  return res.json(lead);
+});
+
+router.delete("/leads/:id", async (req, res) => {
+  const leadId = parseInt(req.params.id);
+  const projectId = parseInt(req.query.projectId as string);
+
+  await db
+    .delete(leadsTable)
+    .where(and(eq(leadsTable.id, leadId), eq(leadsTable.projectId, projectId)));
+
+  return res.json({ deleted: true });
 });
 
 export default router;

@@ -16,6 +16,10 @@ import chatWidgetRouter from "./chat-widget";
 import integrationsRouter from "./integrations";
 import stripeRouter from "./stripe";
 import agentsRouter from "./agents";
+import authRouter from "./auth";
+import webhooksRouter from "./webhooks";
+import activityRouter from "./activity";
+import trackingRouter from "./tracking";
 
 const router: IRouter = Router();
 
@@ -36,5 +40,9 @@ router.use(chatWidgetRouter);
 router.use(integrationsRouter);
 router.use(stripeRouter);
 router.use(agentsRouter);
+router.use(authRouter);
+router.use(webhooksRouter);
+router.use(activityRouter);
+router.use(trackingRouter);
 
 export default router;

@@ -1,4 +1,7 @@
 import { Router, type IRouter } from "express";
+import { db } from "@workspace/db";
+import { keywordsTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -45,12 +48,29 @@ router.post("/keywords/research", async (req, res) => {
   res.json({ keywords, relatedTopics });
 });
 
-router.get("/keywords/saved", async (_req, res) => {
-  res.json([
-    { id: 1, keyword: "marketing automation", searchVolume: 18100, difficulty: 72, savedAt: new Date().toISOString() },
-    { id: 2, keyword: "SEO tools 2025", searchVolume: 9900, difficulty: 58, savedAt: new Date().toISOString() },
-    { id: 3, keyword: "landing page optimization", searchVolume: 6600, difficulty: 45, savedAt: new Date().toISOString() },
-  ]);
+router.get("/keywords/saved", async (req, res) => {
+  const projectId = parseInt(req.query.projectId as string);
+  const keywords = await db
+    .select()
+    .from(keywordsTable)
+    .where(eq(keywordsTable.projectId, projectId))
+    .orderBy(keywordsTable.createdAt);
+  res.json(keywords);
+});
+
+router.post("/keywords/saved", async (req, res) => {
+  const { keyword, searchVolume, difficulty, cpc, trend, intent, projectId } = req.body;
+  const [saved] = await db
+    .insert(keywordsTable)
+    .values({ keyword, searchVolume, difficulty, cpc, trend, intent, projectId })
+    .returning();
+  res.status(201).json(saved);
+});
+
+router.delete("/keywords/saved/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  await db.delete(keywordsTable).where(eq(keywordsTable.id, id));
+  res.json({ success: true });
 });
 
 export default router;

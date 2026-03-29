@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SavedKeyword {
-  id: number;
+export interface SaveKeywordRequest {
   projectId: number;
   keyword: string;
   searchVolume?: number;
@@ -15,5 +14,4 @@ export interface SavedKeyword {
   cpc?: number;
   trend?: string;
   intent?: string;
-  createdAt: Date;
 }

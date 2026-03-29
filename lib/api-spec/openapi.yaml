@@ -292,7 +292,7 @@ paths:
     get:
       operationId: getSavedKeywords
       tags: [keywords]
-      summary: Get saved keyword lists
+      summary: Get saved keywords
       parameters:
         - name: projectId
           in: query
@@ -308,6 +308,45 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/SavedKeyword"
+    post:
+      operationId: saveKeyword
+      tags: [keywords]
+      summary: Save a keyword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveKeywordRequest"
+      responses:
+        "201":
+          description: Saved keyword
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedKeyword"
+
+  /keywords/saved/{id}:
+    delete:
+      operationId: deleteKeyword
+      tags: [keywords]
+      summary: Delete a saved keyword
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
 
   /content/generate:
     post:
@@ -1030,21 +1069,49 @@ components:
       properties:
         id:
           type: integer
+        projectId:
+          type: integer
         keyword:
           type: string
         searchVolume:
           type: integer
         difficulty:
           type: integer
-        savedAt:
+        cpc:
+          type: number
+        trend:
+          type: string
+        intent:
+          type: string
+        createdAt:
           type: string
           format: date-time
       required:
         - id
+        - projectId
         - keyword
-        - searchVolume
-        - difficulty
-        - savedAt
+        - createdAt
+
+    SaveKeywordRequest:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        keyword:
+          type: string
+        searchVolume:
+          type: integer
+        difficulty:
+          type: integer
+        cpc:
+          type: number
+        trend:
+          type: string
+        intent:
+          type: string
+      required:
+        - projectId
+        - keyword
 
     ContentGenerateRequest:
       type: object

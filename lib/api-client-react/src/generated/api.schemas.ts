@@ -172,10 +172,24 @@ export interface KeywordResearchResult {
 
 export interface SavedKeyword {
   id: number;
+  projectId: number;
   keyword: string;
-  searchVolume: number;
-  difficulty: number;
-  savedAt: string;
+  searchVolume?: number;
+  difficulty?: number;
+  cpc?: number;
+  trend?: string;
+  intent?: string;
+  createdAt: string;
+}
+
+export interface SaveKeywordRequest {
+  projectId: number;
+  keyword: string;
+  searchVolume?: number;
+  difficulty?: number;
+  cpc?: number;
+  trend?: string;
+  intent?: string;
 }
 
 export type ContentGenerateRequestType =
@@ -544,6 +558,10 @@ export type ListSeoReportsParams = {
 
 export type GetSavedKeywordsParams = {
   projectId: number;
+};
+
+export type DeleteKeyword200 = {
+  success?: boolean;
 };
 
 export type GetContentHistoryParams = {
