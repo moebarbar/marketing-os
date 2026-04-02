@@ -3,7 +3,8 @@ import {
   LayoutDashboard, BarChart3, LineChart, Search,
   PenTool, Filter, SplitSquareHorizontal, Users,
   Mail, Share2, Target, MessageSquare, Zap, Plug,
-  CreditCard, Bot, FileText, TrendingUp, Brain, Activity, LogOut, Flame
+  CreditCard, Bot, FileText, TrendingUp, Brain, Activity, LogOut, Flame,
+  Tag, Code2, Link2, ChevronDown, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -53,10 +54,17 @@ const AGENT_ITEMS = [
   { icon: TrendingUp, label: "Leads Agent", href: "/agent/leads" },
 ];
 
+const SEO_SUB_ITEMS = [
+  { icon: Search, label: "SEO Analyzer", href: "/seo" },
+  { icon: Tag, label: "Meta Tags", href: "/seo/meta" },
+  { icon: Code2, label: "Schema Gen", href: "/seo/schema" },
+  { icon: Zap, label: "Page Speed", href: "/seo/pagespeed" },
+  { icon: Link2, label: "Backlinks", href: "/seo/backlinks" },
+];
+
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: BarChart3, label: "Analytics", href: "/analytics" },
-  { icon: Search, label: "SEO Analyzer", href: "/seo" },
   { icon: Target, label: "Keywords", href: "/keywords" },
   { icon: PenTool, label: "Content Gen", href: "/content" },
   { icon: Filter, label: "Funnels", href: "/funnels" },
@@ -68,6 +76,7 @@ const NAV_ITEMS = [
   { icon: MessageSquare, label: "Chat Widget", href: "/chat-widget" },
   { icon: Plug, label: "Integrations", href: "/integrations" },
   { icon: Flame, label: "Heatmaps", href: "/heatmaps" },
+  { icon: Code2, label: "Tracking Install", href: "/tracking/install" },
   { icon: Brain, label: "Agent Memory", href: "/memory" },
   { icon: Activity, label: "Activity Feed", href: "/activity" },
   { icon: CreditCard, label: "Billing", href: "/billing" },
@@ -82,6 +91,7 @@ const PLAN_LABELS: Record<string, { label: string; color: string }> = {
 export function Sidebar() {
   const [location] = useLocation();
   const [plan, setPlan] = useState<string | null>(null);
+  const [seoOpen, setSeoOpen] = useState(location.startsWith("/seo"));
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -155,6 +165,41 @@ export function Sidebar() {
         </div>
 
         <div className="h-px bg-card-border mx-3 mb-4" />
+
+        {/* SEO group */}
+        <div className="mb-1">
+          <button
+            onClick={() => setSeoOpen(o => !o)}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group",
+              location.startsWith("/seo") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-slate-800/50 hover:text-foreground"
+            )}
+          >
+            <Search className={cn("w-5 h-5 transition-colors", location.startsWith("/seo") ? "text-primary" : "text-slate-500 group-hover:text-foreground")} />
+            SEO Tools
+            {seoOpen ? <ChevronDown className="w-3.5 h-3.5 ml-auto" /> : <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+          </button>
+          {seoOpen && (
+            <div className="mt-0.5 ml-4 pl-3 border-l border-slate-700/50 space-y-0.5">
+              {SEO_SUB_ITEMS.map(item => {
+                const isActive = location === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-200",
+                      isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-slate-800/50 hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-slate-500")} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* Main nav */}
         <div className="space-y-0.5">

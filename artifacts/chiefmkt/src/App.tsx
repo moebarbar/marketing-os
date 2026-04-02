@@ -15,6 +15,11 @@ import SeoAgentPage from "@/pages/SeoAgent";
 import ContentAgentPage from "@/pages/ContentAgent";
 import LeadsAgentPage from "@/pages/LeadsAgent";
 import SeoAnalyzer from "@/pages/SeoAnalyzer";
+import SeoMeta from "@/pages/SeoMeta";
+import SeoSchema from "@/pages/SeoSchema";
+import SeoPageSpeed from "@/pages/SeoPageSpeed";
+import SeoBacklinks from "@/pages/SeoBacklinks";
+import TrackingInstall from "@/pages/TrackingInstall";
 import Keywords from "@/pages/Keywords";
 import ContentGenerator from "@/pages/ContentGenerator";
 import Funnels from "@/pages/Funnels";
@@ -80,6 +85,11 @@ function AppRoutes() {
         <Route path="/agent/content" component={ContentAgentPage} />
         <Route path="/agent/leads" component={LeadsAgentPage} />
         <Route path="/seo" component={SeoAnalyzer} />
+        <Route path="/seo/meta" component={SeoMeta} />
+        <Route path="/seo/schema" component={SeoSchema} />
+        <Route path="/seo/pagespeed" component={SeoPageSpeed} />
+        <Route path="/seo/backlinks" component={SeoBacklinks} />
+        <Route path="/tracking/install" component={TrackingInstall} />
         <Route path="/keywords" component={Keywords} />
         <Route path="/content" component={ContentGenerator} />
         <Route path="/funnels" component={Funnels} />
