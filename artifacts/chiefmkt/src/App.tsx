@@ -36,6 +36,7 @@ import MemoryPage from "@/pages/Memory";
 import ActivityPage from "@/pages/Activity";
 import LoginPage from "@/pages/Login";
 import HeatmapsPage from "@/pages/Heatmaps";
+import Studio from "@/pages/Studio";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +59,12 @@ function AppRoutes() {
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  // Studio is full-screen — render outside AppLayout before auth checks
+  if (location === "/studio") {
+    if (!user) return <LoginPage />;
+    return <Studio />;
   }
 
   // Show login if not authenticated (and not already on login page)

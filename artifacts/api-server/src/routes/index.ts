@@ -20,6 +20,7 @@ import authRouter from "./auth";
 import webhooksRouter from "./webhooks";
 import activityRouter from "./activity";
 import trackingRouter from "./tracking";
+import studioRouter from "./studio";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(authRouter);
 router.use(webhooksRouter);
 router.use(activityRouter);
 router.use(trackingRouter);
+router.use(studioRouter);
 
 export default router;

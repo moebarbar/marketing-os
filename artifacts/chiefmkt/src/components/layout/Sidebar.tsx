@@ -4,7 +4,7 @@ import {
   PenTool, Filter, SplitSquareHorizontal, Users,
   Mail, Share2, Target, MessageSquare, Zap, Plug,
   CreditCard, Bot, FileText, TrendingUp, Brain, Activity, LogOut, Flame,
-  Tag, Code2, Link2, ChevronDown, ChevronRight
+  Tag, Code2, Link2, ChevronDown, ChevronRight, Layout
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -113,6 +113,23 @@ export function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 px-3 scrollbar-hide">
+        {/* Studio IDE — hero feature */}
+        <div className="mb-3">
+          <Link
+            href="/studio"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group bg-gradient-to-r",
+              location === "/studio"
+                ? "from-violet-600/30 to-blue-600/10 text-violet-300 border border-violet-500/30"
+                : "from-violet-600/10 to-blue-600/5 text-foreground border border-violet-500/20 hover:from-violet-600/20 hover:to-blue-600/10 hover:border-violet-500/40"
+            )}
+          >
+            <Layout className="w-5 h-5 text-violet-400" />
+            Studio IDE
+            <span className="ml-auto text-[9px] font-bold uppercase tracking-wider text-violet-300 bg-violet-500/20 px-1.5 py-0.5 rounded-full">NEW</span>
+          </Link>
+        </div>
+
         {/* CMO Chat — featured */}
         <div className="mb-3">
           <Link

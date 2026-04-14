@@ -15,3 +15,4 @@ export * from "./agent-sessions";
 export * from "./keywords";
 export * from "./users";
 export * from "./page-events";
+export * from "./studio-projects";
