@@ -2,6 +2,33 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { pool } from "@workspace/db";
 import { startScheduler } from "./lib/scheduled-reports.js";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+async function seedAdminUser() {
+  const ADMIN_EMAIL = "moebarbar@hotmail.com";
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "ChiefMKT2026!";
+
+  // Ensure project 1 exists
+  await pool.query(`
+    INSERT INTO projects (id, name, url, tracking_id, is_active, created_at)
+    VALUES (1, 'ChiefMKT HQ', 'https://chiefmkt.com', 'proj_admin_001', true, NOW())
+    ON CONFLICT (id) DO NOTHING
+  `);
+
+  // Check if admin exists
+  const { rows } = await pool.query(`SELECT id FROM users WHERE email = $1`, [ADMIN_EMAIL]);
+  if (rows.length > 0) return; // already seeded
+
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  await pool.query(
+    `INSERT INTO users (email, password_hash, name, project_id, created_at)
+     VALUES ($1, $2, $3, 1, NOW())
+     ON CONFLICT (email) DO NOTHING`,
+    [ADMIN_EMAIL, passwordHash, "Moe Barbar"]
+  );
+  logger.info({ email: ADMIN_EMAIL }, "Admin user seeded");
+}
 
 async function runStartupMigrations() {
   await pool.query(`
@@ -54,6 +81,21 @@ async function runStartupMigrations() {
   await pool.query(`CREATE INDEX IF NOT EXISTS page_events_project_idx ON page_events(project_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS page_events_type_idx ON page_events(event_type)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS page_events_created_idx ON page_events(created_at)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS studio_projects (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      name TEXT NOT NULL DEFAULT 'Untitled Project',
+      project_type TEXT NOT NULL DEFAULT 'web',
+      project_data JSONB NOT NULL DEFAULT '{}',
+      is_published BOOLEAN NOT NULL DEFAULT false,
+      published_url TEXT,
+      thumbnail TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 const rawPort = process.env["PORT"] ?? "3000";
@@ -63,6 +105,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 runStartupMigrations()
+  .then(() => seedAdminUser())
   .then(() => {
     app.listen(port, (err) => {
       if (err) {

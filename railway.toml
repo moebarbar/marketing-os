@@ -1,5 +1,5 @@
 [build]
-buildCommand = "pnpm --filter @workspace/chiefmkt build && pnpm --filter @workspace/api-server build && pnpm --filter @workspace/db push"
+buildCommand = "pnpm --filter @workspace/chiefmkt build && pnpm --filter @workspace/api-server build"
 
 [deploy]
 startCommand = "node artifacts/api-server/dist/index.mjs"

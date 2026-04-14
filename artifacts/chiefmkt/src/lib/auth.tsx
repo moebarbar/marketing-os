@@ -36,23 +36,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<string | null> => {
-    const res = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
-    const data = await res.json();
-    if (!res.ok) return data.error ?? "Login failed";
-    localStorage.setItem("auth_token", data.token);
-    setToken(data.token);
-    setUser(data.user);
-    return null;
+    try {
+      const res = await fetch(`${BASE}/api/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+      const text = await res.text();
+      if (!text) return "Server not reachable. Make sure the API server is running.";
+      const data = JSON.parse(text);
+      if (!res.ok) return data.error ?? "Login failed";
+      localStorage.setItem("auth_token", data.token);
+      setToken(data.token);
+      setUser(data.user);
+      return null;
+    } catch (err) {
+      return "Cannot connect to server. Check your connection or try again.";
+    }
   };
 
   const register = async (email: string, password: string, name: string): Promise<string | null> => {
-    const res = await fetch(`${BASE}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, name }) });
-    const data = await res.json();
-    if (!res.ok) return data.error ?? "Registration failed";
-    localStorage.setItem("auth_token", data.token);
-    setToken(data.token);
-    setUser(data.user);
-    return null;
+    try {
+      const res = await fetch(`${BASE}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password, name }) });
+      const text = await res.text();
+      if (!text) return "Server not reachable. Make sure the API server is running.";
+      const data = JSON.parse(text);
+      if (!res.ok) return data.error ?? "Registration failed";
+      localStorage.setItem("auth_token", data.token);
+      setToken(data.token);
+      setUser(data.user);
+      return null;
+    } catch (err) {
+      return "Cannot connect to server. Check your connection or try again.";
+    }
   };
 
   const logout = async () => {
