@@ -86,17 +86,20 @@ A proven pattern already exists in the sibling `seo-saas` project: **determinist
 
 **New env vars for Railway:** `CREDENTIALS_SECRET` (required in production), optional `INTERNAL_PROJECT_IDS` (default `1`).
 
-### Phase 1 — Make the core real (Weeks 2–6)
+### Phase 1 — Make the core real (Weeks 2–6) — IN PROGRESS
 *Convert every mocked tool to real data. This is the credibility phase.*
 
-- [ ] **Central AI service module** (`lib/ai`): one wrapper around the Anthropic API — Claude Sonnet for generation/analysis, Claude Haiku for cheap classification/scoring. Token budgets per call, response caching, per-tenant usage metering (feeds plan gating).
-- [ ] **Real SEO Analyzer**: server-side fetch + parse (cheerio) → deterministic checks (title, meta, H1s, alt text, links, schema, robots) + **one** Claude call for prioritized recommendations. Port the collector/analyzer design from `seo-saas`. Add real PageSpeed via Google PSI API (free).
-- [ ] **Real content generator**: blog/ad/social/email through the AI service, using the project's `agent_memory` (brand voice, audience) as context. Keep history in `content_history`.
+- [x] **Central AI service module** (`lib/ai.ts`): one Anthropic wrapper — Claude Sonnet 5 for generation, Haiku 4.5 for cheap classification. Bounded `max_tokens`, project-context injection from `agent_memory`, graceful null-return fallback, gated by the Phase 0 `meterAiUsage()` metering.
+- [x] **Real SEO Analyzer** (`lib/seo-audit.ts`): server-side fetch + cheerio parse → 14 deterministic checks (title, meta, H1s, alt text, HTTPS, viewport, canonical, noindex, OG, schema, thin content, internal links, lang) → severity-weighted score + one Haiku call for prioritized recommendations. **SSRF-guarded** (blocks localhost/private/metadata IPs via DNS resolution). Real report `issueCount` (was random).
+- [x] **Real content generator**: blog/ad/social/email/landing/product through the AI service with `agent_memory` brand context; static templates kept only as the offline fallback; deterministic SEO-quality heuristic replaces the random score.
+- [x] **Dashboard on real data only**: visitors, pageviews, bounce rate (single-pageview sessions), avg session duration, conversion rate, and the trend chart all computed from `page_events`; the `Math.random()` generators are gone; `hasRealData` flag for empty states.
+- [x] **A/B testing — sticky assignment**: deterministic hash-of-visitorId split, persisted in localStorage so a returning visitor is never reassigned; embed snippet + convert call fixed (CORS, single source of truth); two-proportion confidence retained.
 - [ ] **Keywords & competitors**: wire DataForSEO (cheapest credible source, pay-per-call) behind the existing UI; degrade gracefully to "connect a data source" instead of fake numbers.
-- [ ] **Dashboard on real data only**: all charts from `page_events`; delete the random trend generator. Empty states that funnel users to snippet install.
-- [ ] **A/B testing v1 complete**: deterministic assignment (hash of visitorId), conversion goals tracked through the SDK (`ChiefMKT.track("convert")`), two-proportion significance test, auto-winner.
-- [ ] **Email sending** via direct SendGrid/Resend keys; delivery/open webhook ingestion.
+- [ ] Real PageSpeed wired into the SEO report (PSI API path already exists in `routes/seo.ts`).
+- [ ] **Email sending** delivery/open webhook ingestion (send path already real via Resend/SendGrid).
 - [ ] Scroll-depth + form-submit events in the tracking SDK (feeds heatmaps and lead capture).
+
+**Verified end-to-end** (throwaway Postgres smoke test): real audit of example.com (score 62, 7 real issues), SSRF guard blocks localhost + `169.254.169.254`, dashboard shows real 2-visitor / 3-pageview / 50%-bounce data, A/B sticky assignment counts the same side twice without flipping. Needs `ANTHROPIC_API_KEY` on Railway to activate AI (falls back cleanly without it).
 
 ### Phase 2 — Monetize & onboard (Weeks 6–9)
 *Turn it into a business.*

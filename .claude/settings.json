@@ -22,7 +22,12 @@
       "Bash(python3 -c 'import sys,json *)",
       "Bash(python3 -c ' *)",
       "Bash(curl -s -X POST http://localhost:3377/api/webhooks/lead -H \"Content-Type: application/json\" -d '{\"projectId\":2,\"email\":\"evil@x.com\"}')",
-      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('generated id:',d.get\\('id'\\),'wordCount:',d.get\\('wordCount'\\)\\)\")"
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('generated id:',d.get\\('id'\\),'wordCount:',d.get\\('wordCount'\\)\\)\")",
+      "Bash(npx -y pnpm@10.33.0 add cheerio)",
+      "Bash(npx -y pnpm@10.33.0 --filter @workspace/api-server run typecheck)",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('control conversions:',d['control']['conversions'],'confidence:',d['confidence']\\)\")",
+      "Bash(pkill -f \"dist/index.mjs\")",
+      "Bash(rm -f /tmp/tok2 /tmp/smoke*.log)"
     ]
   }
 }

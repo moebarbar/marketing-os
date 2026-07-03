@@ -3,8 +3,18 @@ import { db } from "@workspace/db";
 import { contentHistoryTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { meterAiUsage } from "../middleware/plan.js";
+import { generateText, getProjectContext } from "../lib/ai.js";
 
 const router: IRouter = Router();
+
+const TYPE_PROMPTS: Record<string, string> = {
+  blog_post: "Write a well-structured, genuinely useful blog post (900-1300 words) in Markdown with an H1 title, H2 sections, and a conclusion with a call to action.",
+  ad_copy: "Write high-converting ad copy: a hook, 3-4 benefit bullets, social proof if plausible, and a clear call to action. Keep it under 120 words.",
+  social_media: "Write an engaging social media post (LinkedIn/X style): a strong hook, a short actionable insight, a question to drive comments, and 2-3 relevant hashtags.",
+  email: "Write a marketing email: a compelling subject line on the first line (prefixed 'Subject: '), a personal-feeling body under 200 words, and one clear call to action.",
+  landing_page: "Write landing page copy in Markdown: hero headline + subheadline, 3 benefit sections with headers, a testimonial-style social proof block, and a final CTA section.",
+  product_description: "Write a persuasive product description: a bolded one-line value proposition, what makes it different, who it's for, and a closing CTA. Under 180 words.",
+};
 
 router.post("/content/generate", meterAiUsage(), async (req, res) => {
   const { type, topic, tone = "professional" } = req.body;
@@ -136,17 +146,34 @@ Built for businesses that are serious about growth, our ${topic} solution combin
 Starting at $49/month. [Compare Plans →]`,
   };
 
-  const content = contentTemplates[type] || contentTemplates["blog_post"];
+  // Real AI generation; the static templates below remain as the offline fallback
+  const context = await getProjectContext(projectId);
+  const aiContent = await generateText({
+    system: `You are an expert marketing copywriter. Tone: ${tone}. Write publish-ready content — no meta commentary, no placeholders like [Company Name] unless unavoidable.${context}`,
+    prompt: `${TYPE_PROMPTS[type] ?? TYPE_PROMPTS["blog_post"]}\n\nTopic: ${topic}`,
+  });
+
+  const content = aiContent ?? contentTemplates[type] ?? contentTemplates["blog_post"];
+  const aiGenerated = aiContent !== null;
   const wordCount = content.split(/\s+/).length;
+
+  // Deterministic quality heuristic (not a real SEO audit): length, structure, CTA
+  let seoScore = 50;
+  if (wordCount > 300) seoScore += 15;
+  if (wordCount > 800) seoScore += 10;
+  if (/^#{1,2}\s/m.test(content)) seoScore += 10;
+  if (content.toLowerCase().includes(String(topic).toLowerCase())) seoScore += 10;
+  if (/\b(sign up|get started|learn more|try|start)\b/i.test(content)) seoScore += 5;
+  seoScore = Math.min(seoScore, 100);
 
   const [saved] = await db.insert(contentHistoryTable).values({
     projectId,
     type,
     title: `${type === "blog_post" ? "Article" : type.replace("_", " ")}: ${topic}`,
     content,
-    seoScore: Math.floor(Math.random() * 20) + 70,
+    seoScore,
     wordCount,
-    metadata: { tone, topic },
+    metadata: { tone, topic, aiGenerated },
   }).returning();
 
   res.json({
@@ -156,6 +183,7 @@ Starting at $49/month. [Compare Plans →]`,
     title: saved.title,
     seoScore: saved.seoScore,
     wordCount,
+    aiGenerated,
     createdAt: saved.createdAt,
   });
 });

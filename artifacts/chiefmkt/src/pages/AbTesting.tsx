@@ -65,10 +65,19 @@ function EmbedModal({ test, onClose }: { test: AbTest; onClose: () => void }) {
   const snippet = `<!-- A/B Test: ${test.name} -->
 <script>
 (function(){
-  var v = Math.random() < 0.5 ? "control" : "variant";
-  fetch("${BASE}/api/ab-tests/${test.id}/visit", {method:"POST"});
-  if(v === "variant") window.location.href = "${test.variant.url}";
-  window.ChiefMKT_ABVariant = v;
+  var K="_cmkt_ab_${test.id}";
+  var v=localStorage.getItem(K);
+  var vid=localStorage.getItem("_cmkt_v")||(Math.random().toString(36).slice(2));
+  localStorage.setItem("_cmkt_v",vid);
+  if(!v){
+    // deterministic first-time assignment; persisted so it never changes
+    var h=0;for(var i=0;i<vid.length;i++){h=(h*31+vid.charCodeAt(i))|0;}
+    v=(h&1)===0?"control":"variant";
+    localStorage.setItem(K,v);
+    fetch("${BASE}/api/ab-tests/${test.id}/visit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({assigned:v,visitorId:vid})});
+  }
+  window.ChiefMKT_ABVariant=v;
+  if(v==="variant" && location.href.indexOf("${test.variant.url}")===-1) window.location.href="${test.variant.url}";
 })();
 </script>`;
 
@@ -84,7 +93,7 @@ function EmbedModal({ test, onClose }: { test: AbTest; onClose: () => void }) {
         <p className="text-xs text-slate-500">
           To track conversions, call:{" "}
           <code className="text-blue-400 break-all">
-            {`fetch('/api/ab-tests/${test.id}/convert', {method:'POST',body:JSON.stringify({variant:window.ChiefMKT_ABVariant})})`}
+            {`fetch('${BASE}/api/ab-tests/${test.id}/convert', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({variant:window.ChiefMKT_ABVariant})})`}
           </code>
         </p>
         <button onClick={onClose} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-medium">Close</button>

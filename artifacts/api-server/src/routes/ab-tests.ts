@@ -54,16 +54,30 @@ router.patch("/ab-tests/:id", async (req, res) => {
   return res.json(test);
 });
 
-// POST /ab-tests/:id/visit — record a visitor to control or variant (50/50 split)
+// POST /ab-tests/:id/visit — assign a visitor and record the visit.
+// Public (called from customer sites). The client sends its sticky assignment
+// (chosen once, persisted in localStorage) so a returning visitor is never
+// reassigned; if absent, the server assigns deterministically by visitorId hash.
 router.post("/ab-tests/:id/visit", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
   const id = parseInt(req.params.id);
   const [test] = await db.select().from(abTestsTable).where(eq(abTestsTable.id, id)).limit(1);
   if (!test || test.status !== "running") return res.status(400).json({ error: "Test not running" });
 
-  const variant = Math.random() < 0.5 ? "control" : "variant";
+  const { assigned, visitorId } = req.body ?? {};
+  let variant: "control" | "variant";
+  if (assigned === "control" || assigned === "variant") {
+    variant = assigned;
+  } else {
+    // Deterministic hash of visitorId → stable 50/50 split
+    const key = String(visitorId ?? Math.random());
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) | 0;
+    variant = (hash & 1) === 0 ? "control" : "variant";
+  }
+
   const ctrl = test.control as Record<string, number>;
   const vari = test.variant as Record<string, number>;
-
   const updated = variant === "control"
     ? { control: { ...ctrl, visitors: (ctrl.visitors ?? 0) + 1 } }
     : { variant: { ...vari, visitors: (vari.visitors ?? 0) + 1 } };
@@ -72,10 +86,18 @@ router.post("/ab-tests/:id/visit", async (req, res) => {
   return res.json({ variant, test: row });
 });
 
+router.options("/ab-tests/:id/visit", (_req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.sendStatus(204);
+});
+
 // POST /ab-tests/:id/convert — record a conversion for control or variant
 router.post("/ab-tests/:id/convert", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
   const id = parseInt(req.params.id);
   const { variant } = req.body; // "control" | "variant"
+  if (variant !== "control" && variant !== "variant") return res.status(400).json({ error: "variant must be control or variant" });
   const [test] = await db.select().from(abTestsTable).where(eq(abTestsTable.id, id)).limit(1);
   if (!test || test.status !== "running") return res.status(400).json({ error: "Test not running" });
 
@@ -102,6 +124,12 @@ router.post("/ab-tests/:id/convert", async (req, res) => {
 
   const [row] = await db.update(abTestsTable).set(updated).where(eq(abTestsTable.id, id)).returning();
   return res.json(row);
+});
+
+router.options("/ab-tests/:id/convert", (_req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.sendStatus(204);
 });
 
 export default router;
