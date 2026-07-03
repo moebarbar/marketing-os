@@ -5,8 +5,8 @@ export async function sendCampaignViaSendGrid(opts: {
   to: string[];
   subject: string;
   body: string;
-}): Promise<{ success: boolean; error?: string }> {
-  const settings = await getConnectorSettings('sendgrid');
+}, projectId?: number): Promise<{ success: boolean; error?: string }> {
+  const settings = await getConnectorSettings('sendgrid', projectId);
   if (!settings?.settings?.api_key) {
     return { success: false, error: 'SendGrid not connected. Please connect SendGrid in the Integrations page.' };
   }

@@ -2,11 +2,13 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { contentHistoryTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import { meterAiUsage } from "../middleware/plan.js";
 
 const router: IRouter = Router();
 
-router.post("/content/generate", async (req, res) => {
-  const { type, topic, tone = "professional", projectId } = req.body;
+router.post("/content/generate", meterAiUsage(), async (req, res) => {
+  const { type, topic, tone = "professional" } = req.body;
+  const projectId = req.projectId!;
 
   const contentTemplates: Record<string, string> = {
     blog_post: `# The Complete Guide to ${topic}
@@ -159,7 +161,7 @@ Starting at $49/month. [Compare Plans →]`,
 });
 
 router.get("/content/history", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const history = await db
     .select({
       id: contentHistoryTable.id,

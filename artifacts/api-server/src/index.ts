@@ -15,6 +15,9 @@ async function seedAdminUser() {
     VALUES (1, 'ChiefMKT HQ', 'https://chiefmkt.com', 'proj_admin_001', true, NOW())
     ON CONFLICT (id) DO NOTHING
   `);
+  // Inserting an explicit id bypasses the sequence — advance it so the next
+  // registration doesn't collide on projects_pkey
+  await pool.query(`SELECT setval('projects_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM projects), 1))`);
 
   // Check if admin exists
   const { rows } = await pool.query(`SELECT id FROM users WHERE email = $1`, [ADMIN_EMAIL]);
@@ -81,6 +84,35 @@ async function runStartupMigrations() {
   await pool.query(`CREATE INDEX IF NOT EXISTS page_events_project_idx ON page_events(project_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS page_events_type_idx ON page_events(event_type)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS page_events_created_idx ON page_events(created_at)`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS integration_credentials (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER NOT NULL,
+      service TEXT NOT NULL,
+      settings TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS integration_credentials_project_service_idx
+     ON integration_credentials(project_id, service)`,
+  );
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS usage_counters (
+      id SERIAL PRIMARY KEY,
+      project_id INTEGER NOT NULL,
+      metric TEXT NOT NULL,
+      period TEXT NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS usage_counters_project_metric_period_idx
+     ON usage_counters(project_id, metric, period)`,
+  );
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS studio_projects (

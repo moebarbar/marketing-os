@@ -20,8 +20,8 @@ export async function pushContentToNotion(content: {
   type: string;
   body: string;
   databaseId?: string;
-}): Promise<{ success: boolean; pageUrl?: string; error?: string }> {
-  const settings = await getConnectorSettings('notion');
+}, projectId?: number): Promise<{ success: boolean; pageUrl?: string; error?: string }> {
+  const settings = await getConnectorSettings('notion', projectId);
   const token = settings?.settings?.access_token ?? settings?.settings?.api_key;
   if (!token) {
     return { success: false, error: 'Notion not connected. Please connect Notion in the Integrations page.' };

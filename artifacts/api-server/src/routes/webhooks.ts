@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, agentMemory } from "@workspace/db/schema";
+import { leadsTable, agentMemory, projectsTable } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -38,18 +38,33 @@ async function autoScore(projectId: number, leadData: { company?: string; source
   }
 }
 
-// POST /webhooks/lead — inbound lead from any source (forms, Zapier, etc.)
+// POST /webhooks/lead — inbound lead from any source (forms, Zapier, etc.).
+// Public endpoint: the target project is identified by its trackingId (the
+// same public key used by the tracking snippet). A raw projectId is only
+// accepted alongside a valid shared webhook secret.
 router.post("/webhooks/lead", async (req: Request, res: Response) => {
-  const secret = process.env.WEBHOOK_SECRET;
-  if (secret) {
-    const provided = req.headers["x-webhook-secret"];
-    if (provided !== secret) return res.status(403).json({ error: "Invalid webhook secret" });
-  }
-
-  const { email, name, company, source, projectId: bodyProjectId } = req.body;
+  const { email, name, company, source, trackingId, projectId: bodyProjectId } = req.body;
   if (!email) return res.status(400).json({ error: "email is required" });
 
-  const projectId = parseInt(bodyProjectId ?? "1");
+  let projectId: number | null = null;
+
+  if (typeof trackingId === "string" && trackingId) {
+    const [project] = await db
+      .select({ id: projectsTable.id })
+      .from(projectsTable)
+      .where(eq(projectsTable.trackingId, trackingId))
+      .limit(1);
+    if (!project) return res.status(404).json({ error: "Unknown trackingId" });
+    projectId = project.id;
+  } else {
+    const secret = process.env.WEBHOOK_SECRET;
+    const provided = req.headers["x-webhook-secret"];
+    if (!secret || provided !== secret) {
+      return res.status(403).json({ error: "Provide a trackingId, or a projectId with a valid x-webhook-secret header" });
+    }
+    projectId = parseInt(bodyProjectId ?? "1");
+  }
+
   const score = await autoScore(projectId, { email, company, source });
 
   const [lead] = await db

@@ -6,7 +6,8 @@ import { eq } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.post("/seo/analyze", async (req, res) => {
-  const { url, projectId } = req.body;
+  const { url } = req.body;
+  const projectId = req.projectId!;
 
   const score = Math.floor(Math.random() * 30) + 50;
 
@@ -87,7 +88,7 @@ router.post("/seo/analyze", async (req, res) => {
 });
 
 router.get("/seo/reports", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const reports = await db
     .select({
       id: seoReportsTable.id,
@@ -139,7 +140,7 @@ router.post("/seo/meta-generate", async (req, res) => {
     "twitter:description": descriptions[0],
   };
 
-  res.json({ titles, descriptions, ogTags });
+  return res.json({ titles, descriptions, ogTags });
 });
 
 // POST /seo/schema-generate
@@ -205,7 +206,7 @@ router.post("/seo/schema-generate", async (req, res) => {
     return res.status(400).json({ error: "type must be product, article, faq, or local" });
   }
 
-  res.json({ jsonld: JSON.stringify(jsonld, null, 2), type });
+  return res.json({ jsonld: JSON.stringify(jsonld, null, 2), type });
 });
 
 // POST /seo/pagespeed
@@ -244,7 +245,7 @@ router.post("/seo/pagespeed", async (req, res) => {
   }
 
   // Demo response when no API key
-  res.json({
+  return res.json({
     url,
     mobile: { score: 62, lcp: "3.8s", fid: "180ms", cls: "0.15", ttfb: "620ms", fcp: "2.1s" },
     desktop: { score: 81, lcp: "1.9s", fid: "45ms", cls: "0.05", ttfb: "310ms", fcp: "1.1s" },
@@ -280,7 +281,7 @@ router.post("/seo/backlinks", async (req, res) => {
     "Find broken links on competitor-adjacent sites and pitch your content as a replacement",
   ];
 
-  res.json({ domain, backlinks, totalActive: backlinks.filter(b => b.status === "active").length, suggestions, note: "Connect DataForSEO for real backlink data." });
+  return res.json({ domain, backlinks, totalActive: backlinks.filter(b => b.status === "active").length, suggestions, note: "Connect DataForSEO for real backlink data." });
 });
 
 export default router;

@@ -1,12 +1,16 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import { existsSync } from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+// Behind Railway's proxy — needed for correct client IPs in rate limiting
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -29,10 +33,38 @@ app.use(
 );
 app.use(cors());
 app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Brute-force protection on credential endpoints
+app.use(
+  ["/api/auth/login", "/api/auth/register"],
+  rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false }),
+);
+// Public event ingestion — generous, but bounded per IP
+app.use(
+  "/api/track",
+  rateLimit({ windowMs: 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false }),
+);
+// AI endpoints are expensive — keep bursts in check (plan limits meter monthly usage)
+app.use(
+  ["/api/studio/ai", "/api/content/generate"],
+  rateLimit({ windowMs: 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false }),
+);
+
 app.use("/api", router);
+
+// Unknown API routes return JSON, not the SPA shell
+app.use("/api", (_req: Request, res: Response) => {
+  res.status(404).json({ error: "Not found" });
+});
+
+// Central error handler: log with the request logger, never leak internals
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  (req as Request & { log?: typeof logger }).log?.error({ err }, "Unhandled route error");
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Internal server error" });
+});
 
 // Serve built frontend in production
 const staticDir = path.join(process.cwd(), "artifacts/chiefmkt/dist/public");
@@ -41,7 +73,9 @@ if (process.env.NODE_ENV === "production") {
   if (existsSync(staticDir)) {
     app.use(express.static(staticDir));
   }
-  app.get("*", (_req, res) => {
+  // SPA fallback (Express 5 no longer accepts a bare "*" route path)
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api")) return next();
     if (existsSync(indexHtml)) {
       res.sendFile(indexHtml);
     } else {

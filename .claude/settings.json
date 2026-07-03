@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/moe/Desktop/coding1/marketing-os log --stat -2 --format=\"%h %s\")",
+      "Bash(pnpm add *)",
+      "Bash(npx --version)",
+      "Bash(npx -y pnpm@10.33.0 add express-rate-limit)",
+      "Bash(npx -y pnpm@10.33.0 run typecheck)",
+      "Bash(npx -y pnpm@10.33.0 install)",
+      "Bash(npx -y pnpm@10.33.0 --filter @workspace/chiefmkt build)",
+      "Bash(npx -y pnpm@10.33.0 --filter @workspace/api-server build)",
+      "Bash(npx -y pnpm@10.33.0 --filter @workspace/chiefmkt run typecheck)",
+      "Bash(docker exec *)",
+      "Bash(export DATABASE_URL=\"postgresql://postgres:smoke@localhost:55432/chiefmkt\")",
+      "Bash(npx -y pnpm@10.33.0 --filter @workspace/db run push)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:smoke@localhost:55432/chiefmkt\" NODE_ENV=production PORT=3377 ADMIN_PASSWORD=smoketest123 node --enable-source-maps ./dist/index.mjs)",
+      "Bash(curl -s http://localhost:3377/api/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3377/api/leads)",
+      "Bash(curl -s -X POST http://localhost:3377/api/auth/register -H \"Content-Type: application/json\" -d '{\"email\":\"a@test.com\",\"password\":\"pass1234\",\"name\":\"Alice\"}')",
+      "Bash(DATABASE_URL=\"postgresql://postgres:smoke@localhost:55432/chiefmkt\" npx -y pnpm@10.33.0 --filter @workspace/db run push)",
+      "Bash(curl -s http://localhost:3377/api/leads)",
+      "Bash(python3 -c 'import sys,json *)",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -X POST http://localhost:3377/api/webhooks/lead -H \"Content-Type: application/json\" -d '{\"projectId\":2,\"email\":\"evil@x.com\"}')",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('generated id:',d.get\\('id'\\),'wordCount:',d.get\\('wordCount'\\)\\)\")"
+    ]
+  }
+}

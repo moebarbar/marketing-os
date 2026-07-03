@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
+import { requireAuth } from "../middleware/auth";
 import healthRouter from "./health";
 import projectsRouter from "./projects";
 import dashboardRouter from "./dashboard";
-import analyticsRouter from "./analytics";
 import seoRouter from "./seo";
 import keywordsRouter from "./keywords";
 import contentRouter from "./content";
@@ -24,10 +24,14 @@ import studioRouter from "./studio";
 
 const router: IRouter = Router();
 
+// Session auth for everything except the public allowlist (tracking snippet,
+// A/B embeds, webhooks, auth itself). Sets req.user and req.projectId —
+// handlers must derive tenancy from req.projectId, never from client input.
+router.use(requireAuth);
+
 router.use(healthRouter);
 router.use(projectsRouter);
 router.use(dashboardRouter);
-router.use(analyticsRouter);
 router.use(seoRouter);
 router.use(keywordsRouter);
 router.use(contentRouter);

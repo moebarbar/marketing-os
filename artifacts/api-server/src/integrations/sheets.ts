@@ -27,9 +27,10 @@ export type ExportType = 'analytics' | 'leads' | 'keywords';
 
 export async function exportToGoogleSheets(
   type: ExportType,
-  rows: Record<string, unknown>[]
+  rows: Record<string, unknown>[],
+  projectId?: number
 ): Promise<{ success: boolean; spreadsheetUrl?: string; error?: string }> {
-  const settings = await getConnectorSettings('google-sheet');
+  const settings = await getConnectorSettings('google-sheet', projectId);
   const token = settings?.settings?.access_token;
   if (!token) {
     return { success: false, error: 'Google Sheets not connected. Please connect Google Sheets in the Integrations page.' };

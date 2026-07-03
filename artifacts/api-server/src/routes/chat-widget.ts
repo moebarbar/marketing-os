@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.get("/chat-widget/settings", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const [settings] = await db
     .select()
     .from(chatWidgetSettingsTable)
@@ -20,11 +20,12 @@ router.get("/chat-widget/settings", async (req, res) => {
     return res.json(created);
   }
 
-  res.json(settings);
+  return res.json(settings);
 });
 
 router.put("/chat-widget/settings", async (req, res) => {
-  const { projectId, isEnabled, welcomeMessage, botName, primaryColor, position, qualifyLeads, captureEmail } = req.body;
+  const { isEnabled, welcomeMessage, botName, primaryColor, position, qualifyLeads, captureEmail } = req.body;
+  const projectId = req.projectId!;
 
   const [existing] = await db
     .select()
@@ -44,11 +45,11 @@ router.put("/chat-widget/settings", async (req, res) => {
     .insert(chatWidgetSettingsTable)
     .values({ projectId, isEnabled, welcomeMessage, botName, primaryColor, position, qualifyLeads, captureEmail })
     .returning();
-  res.json(created);
+  return res.json(created);
 });
 
 router.get("/chat-widget/conversations", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const conversations = await db
     .select()
     .from(chatConversationsTable)

@@ -6,7 +6,7 @@ import { eq, and, gte, desc } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.get("/activity", async (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   const days = parseInt(req.query.days as string) || 30;
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 

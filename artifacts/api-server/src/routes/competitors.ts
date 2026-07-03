@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.get("/competitors", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const competitors = await db
     .select()
     .from(competitorsTable)
@@ -15,7 +15,8 @@ router.get("/competitors", async (req, res) => {
 });
 
 router.post("/competitors", async (req, res) => {
-  const { url, projectId } = req.body;
+  const { url } = req.body;
+  const projectId = req.projectId!;
 
   const domain = url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   const name = domain.split(".")[0].charAt(0).toUpperCase() + domain.split(".")[0].slice(1);

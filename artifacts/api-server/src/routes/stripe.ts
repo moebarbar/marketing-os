@@ -7,7 +7,7 @@ import { getStripeClient, PLANS, type PlanKey } from "../integrations/stripe.js"
 const router: IRouter = Router();
 
 router.get("/stripe/subscription", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const [sub] = await db
     .select()
     .from(subscriptionsTable)
@@ -17,12 +17,12 @@ router.get("/stripe/subscription", async (req, res) => {
 });
 
 router.post("/stripe/create-checkout", async (req, res) => {
-  const { projectId, plan, successUrl, cancelUrl } = req.body as {
-    projectId: number;
+  const { plan, successUrl, cancelUrl } = req.body as {
     plan: PlanKey;
     successUrl: string;
     cancelUrl: string;
   };
+  const projectId = req.projectId!;
 
   if (!PLANS[plan]) {
     res.status(400).json({ error: "Invalid plan" });
@@ -57,10 +57,10 @@ router.post("/stripe/create-checkout", async (req, res) => {
 });
 
 router.post("/stripe/create-portal", async (req, res) => {
-  const { projectId, returnUrl } = req.body as {
-    projectId: number;
+  const { returnUrl } = req.body as {
     returnUrl: string;
   };
+  const projectId = req.projectId!;
 
   const [sub] = await db
     .select()
@@ -109,7 +109,7 @@ router.post("/stripe/webhook", async (req, res) => {
   }
 
   if (event.type === "checkout.session.completed") {
-    const session = event.data.object as {
+    const session = event.data.object as unknown as {
       metadata: { projectId: string; plan: string };
       customer: string;
       subscription: string;
@@ -127,7 +127,7 @@ router.post("/stripe/webhook", async (req, res) => {
         stripeSubscriptionId: session.subscription,
         plan,
         status: "active",
-        currentPeriodEnd: new Date((stripeSubscription as { current_period_end: number }).current_period_end * 1000),
+        currentPeriodEnd: new Date((stripeSubscription as unknown as { current_period_end: number }).current_period_end * 1000),
       })
       .onConflictDoUpdate({
         target: subscriptionsTable.projectId,
@@ -136,7 +136,7 @@ router.post("/stripe/webhook", async (req, res) => {
           stripeSubscriptionId: session.subscription,
           plan,
           status: "active",
-          currentPeriodEnd: new Date((stripeSubscription as { current_period_end: number }).current_period_end * 1000),
+          currentPeriodEnd: new Date((stripeSubscription as unknown as { current_period_end: number }).current_period_end * 1000),
         },
       });
   } else if (event.type === "customer.subscription.deleted") {
@@ -146,7 +146,7 @@ router.post("/stripe/webhook", async (req, res) => {
       .set({ status: "canceled" })
       .where(eq(subscriptionsTable.stripeSubscriptionId, sub.id));
   } else if (event.type === "customer.subscription.updated") {
-    const sub = event.data.object as {
+    const sub = event.data.object as unknown as {
       id: string;
       status: string;
       current_period_end: number;

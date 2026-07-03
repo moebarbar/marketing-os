@@ -9,8 +9,8 @@ interface HubSpotContact {
   source?: string;
 }
 
-export async function syncLeadToHubSpot(lead: HubSpotContact): Promise<{ success: boolean; contactId?: string; error?: string }> {
-  const settings = await getConnectorSettings('hubspot');
+export async function syncLeadToHubSpot(lead: HubSpotContact, projectId?: number): Promise<{ success: boolean; contactId?: string; error?: string }> {
+  const settings = await getConnectorSettings('hubspot', projectId);
   if (!settings?.settings?.access_token) {
     return { success: false, error: 'HubSpot not connected. Please connect HubSpot in the Integrations page.' };
   }

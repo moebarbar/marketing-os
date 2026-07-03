@@ -83,7 +83,7 @@ function calculateLeadScore(data: { source?: string; company?: string | null; na
 }
 
 router.get("/leads", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
   const offset = (page - 1) * limit;
@@ -105,7 +105,8 @@ router.get("/leads", async (req, res) => {
 });
 
 router.post("/leads", async (req, res) => {
-  const { email, name, company, source = "organic", score: manualScore, projectId, pageUrl } = req.body;
+  const { email, name, company, source = "organic", score: manualScore, pageUrl } = req.body;
+  const projectId = req.projectId!;
   const score = manualScore !== undefined ? manualScore : calculateLeadScore({ source, company, name, pageUrl });
 
   const [lead] = await db
@@ -122,9 +123,9 @@ router.post("/leads", async (req, res) => {
       company: lead.company ?? undefined,
       leadScore: lead.score,
       source: lead.source,
-    }).catch(() => {}),
+    }, projectId).catch(() => {}),
     lead.score >= 70
-      ? notifyHighScoreLead({ name: lead.name ?? undefined, email: lead.email, score: lead.score, company: lead.company ?? undefined }).catch(() => {})
+      ? notifyHighScoreLead({ name: lead.name ?? undefined, email: lead.email, score: lead.score, company: lead.company ?? undefined }, projectId).catch(() => {})
       : Promise.resolve(),
     lead.score >= 70
       ? sendHotLeadEmail({ name: lead.name, email: lead.email, score: lead.score, company: lead.company, source: lead.source }).catch(() => {})
@@ -136,7 +137,7 @@ router.post("/leads", async (req, res) => {
 
 router.patch("/leads/:id", async (req, res) => {
   const leadId = parseInt(req.params.id);
-  const projectId = parseInt(req.query.projectId as string) || req.body.projectId;
+  const projectId = req.projectId!;
   const { score, status, name, company } = req.body;
 
   const updates: Record<string, unknown> = {};
@@ -161,7 +162,7 @@ router.patch("/leads/:id", async (req, res) => {
 
 router.delete("/leads/:id", async (req, res) => {
   const leadId = parseInt(req.params.id);
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
 
   await db
     .delete(leadsTable)

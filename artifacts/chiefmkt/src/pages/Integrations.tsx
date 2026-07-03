@@ -15,7 +15,7 @@ const INTEGRATIONS = [
     category: "CRM",
     docs: "https://developers.hubspot.com/docs/api/crm/contacts",
     envVars: [
-      { name: "HUBSPOT_ACCESS_TOKEN", hint: "Private App access token from HubSpot → Settings → Integrations → Private Apps" },
+      { name: "HUBSPOT_ACCESS_TOKEN", key: "access_token", hint: "Private App access token from HubSpot → Settings → Integrations → Private Apps" },
     ],
   },
   {
@@ -26,8 +26,8 @@ const INTEGRATIONS = [
     category: "Email",
     docs: "https://docs.sendgrid.com/ui/account-and-settings/api-keys",
     envVars: [
-      { name: "SENDGRID_API_KEY", hint: "Full Access API key from SendGrid → Settings → API Keys" },
-      { name: "SENDGRID_FROM_EMAIL", hint: "Verified sender email address (e.g. you@yourdomain.com)" },
+      { name: "SENDGRID_API_KEY", key: "api_key", hint: "Full Access API key from SendGrid → Settings → API Keys" },
+      { name: "SENDGRID_FROM_EMAIL", key: "from_email", hint: "Verified sender email address (e.g. you@yourdomain.com)" },
     ],
   },
   {
@@ -38,8 +38,8 @@ const INTEGRATIONS = [
     category: "Email",
     docs: "https://resend.com/docs/introduction",
     envVars: [
-      { name: "RESEND_API_KEY", hint: "API key from resend.com → API Keys" },
-      { name: "RESEND_FROM_EMAIL", hint: "Verified sender e.g. ChiefMKT <hello@yourdomain.com>" },
+      { name: "RESEND_API_KEY", key: "api_key", hint: "API key from resend.com → API Keys" },
+      { name: "RESEND_FROM_EMAIL", key: "from_email", hint: "Verified sender e.g. ChiefMKT <hello@yourdomain.com>" },
     ],
   },
   {
@@ -50,7 +50,7 @@ const INTEGRATIONS = [
     category: "Notifications",
     docs: "https://api.slack.com/messaging/webhooks",
     envVars: [
-      { name: "SLACK_WEBHOOK_URL", hint: "Incoming Webhook URL from api.slack.com → Your Apps → Incoming Webhooks" },
+      { name: "SLACK_WEBHOOK_URL", key: "webhook_url", hint: "Incoming Webhook URL from api.slack.com → Your Apps → Incoming Webhooks" },
     ],
   },
   {
@@ -61,7 +61,7 @@ const INTEGRATIONS = [
     category: "Export",
     docs: "https://developers.google.com/sheets/api/guides/authorizing",
     envVars: [
-      { name: "GOOGLE_SHEETS_ACCESS_TOKEN", hint: "OAuth2 access token with Sheets write scope — use a service account or OAuth playground for a long-lived token" },
+      { name: "GOOGLE_SHEETS_ACCESS_TOKEN", key: "access_token", hint: "OAuth2 access token with Sheets write scope — use a service account or OAuth playground for a long-lived token" },
     ],
   },
   {
@@ -72,7 +72,7 @@ const INTEGRATIONS = [
     category: "Storage",
     docs: "https://developers.google.com/drive/api/guides/about-auth",
     envVars: [
-      { name: "GOOGLE_DRIVE_ACCESS_TOKEN", hint: "OAuth2 access token with Drive write scope" },
+      { name: "GOOGLE_DRIVE_ACCESS_TOKEN", key: "access_token", hint: "OAuth2 access token with Drive write scope" },
     ],
   },
   {
@@ -83,7 +83,7 @@ const INTEGRATIONS = [
     category: "CMS",
     docs: "https://developers.notion.com/docs/authorization",
     envVars: [
-      { name: "NOTION_API_KEY", hint: "Internal Integration Secret from notion.so/my-integrations — share your target database with the integration" },
+      { name: "NOTION_API_KEY", key: "api_key", hint: "Internal Integration Secret from notion.so/my-integrations — share your target database with the integration" },
     ],
   },
   {
@@ -94,7 +94,7 @@ const INTEGRATIONS = [
     category: "Storage",
     docs: "https://developer.box.com/guides/authentication/",
     envVars: [
-      { name: "BOX_ACCESS_TOKEN", hint: "Developer Token from developer.box.com → My Apps → your app → Configuration" },
+      { name: "BOX_ACCESS_TOKEN", key: "access_token", hint: "Developer Token from developer.box.com → My Apps → your app → Configuration" },
     ],
   },
 ];
@@ -107,6 +107,8 @@ export default function Integrations() {
   const [filter, setFilter] = useState<string>("All");
   const [connectTarget, setConnectTarget] = useState<Integration | null>(null);
   const [copied, setCopied] = useState(false);
+  const [credValues, setCredValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   const { data: statuses, isLoading, isFetching } = useQuery({
     queryKey: ["integration-statuses"],
@@ -136,8 +138,43 @@ export default function Integrations() {
       }));
       toast({ title: `${integration.name} connected`, description: "Integration is active and ready to use." });
     } else {
+      setCredValues({});
       setConnectTarget(integration);
       queryClient.invalidateQueries({ queryKey: ["integration-statuses"] });
+    }
+  };
+
+  const handleSaveCredentials = async () => {
+    if (!connectTarget) return;
+    const settings: Record<string, string> = {};
+    for (const ev of connectTarget.envVars) {
+      const value = credValues[ev.key]?.trim();
+      if (value) settings[ev.key] = value;
+    }
+    if (Object.keys(settings).length === 0) {
+      toast({ title: "Missing values", description: "Enter at least one credential value.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`${BASE}/api/integrations/credentials/${connectTarget.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings }),
+      });
+      const data = await res.json() as { connected?: boolean; error?: string };
+      if (data.connected) {
+        queryClient.setQueryData<Record<string, boolean>>(["integration-statuses"], (old) => ({
+          ...(old ?? {}),
+          [connectTarget.id]: true,
+        }));
+        toast({ title: `${connectTarget.name} connected`, description: "Credentials saved securely for this project." });
+        setConnectTarget(null);
+      } else {
+        toast({ title: "Could not save", description: data.error ?? "Unknown error", variant: "destructive" });
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -255,7 +292,7 @@ export default function Integrations() {
               <div className="flex items-start gap-2">
                 <Key className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-blue-300">
-                  Add the following environment variable(s) to your <span className="font-semibold">Railway dashboard</span>, then click Connect to activate.
+                  Paste your credential(s) below. They're encrypted and stored only for your project.
                 </p>
               </div>
             </div>
@@ -272,7 +309,14 @@ export default function Integrations() {
                       {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">{ev.hint}</p>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-2">{ev.hint}</p>
+                  <input
+                    type="password"
+                    value={credValues[ev.key] ?? ""}
+                    onChange={(e) => setCredValues((v) => ({ ...v, [ev.key]: e.target.value }))}
+                    placeholder="Paste value…"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-primary"
+                  />
                 </div>
               ))}
             </div>
@@ -280,7 +324,7 @@ export default function Integrations() {
             <div className="flex gap-3">
               <button
                 onClick={() => setConnectTarget(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white text-sm font-medium transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white text-sm font-medium transition-colors"
               >
                 Close
               </button>
@@ -288,14 +332,21 @@ export default function Integrations() {
                 href={connectTarget.docs}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
               >
-                <ExternalLink className="w-4 h-4" /> View Docs
+                <ExternalLink className="w-4 h-4" /> Docs
               </a>
+              <button
+                onClick={handleSaveCredentials}
+                disabled={saving}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save & Connect"}
+              </button>
             </div>
 
             <p className="text-xs text-slate-500 text-center mt-3">
-              After adding the env var in Railway → redeploy → click <span className="text-primary">Connect</span> on the card.
+              Alternatively, set the env var of the same name on the server (Railway → Variables) as a global fallback.
             </p>
           </div>
         </div>

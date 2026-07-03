@@ -1,5 +1,22 @@
-// Credential resolution: tries Replit connector system first, falls back to env vars.
-// On Railway (or any non-Replit host), set env vars directly to enable integrations.
+// Credential resolution for third-party integrations.
+// Order: per-project credentials stored (encrypted) in the database, then
+// process-wide env vars as a fallback for single-tenant / self-hosted setups.
+
+import { db } from "@workspace/db";
+import { integrationCredentialsTable } from "@workspace/db/schema";
+import { eq, and } from "drizzle-orm";
+import { decryptJson } from "../lib/crypto.js";
+
+export const SUPPORTED_SERVICES = [
+  "hubspot",
+  "sendgrid",
+  "resend",
+  "slack",
+  "google-sheet",
+  "google-drive",
+  "notion",
+  "box",
+] as const;
 
 const ENV_FALLBACKS: Record<string, Record<string, string>> = {
   hubspot: {
@@ -16,7 +33,7 @@ const ENV_FALLBACKS: Record<string, Record<string, string>> = {
   slack: {
     webhook_url: process.env.SLACK_WEBHOOK_URL ?? '',
     access_token: process.env.SLACK_BOT_TOKEN ?? '',
-    channel_id: process.env.SLACK_CHANNEL_ID ?? '#general',
+    channel_id: process.env.SLACK_CHANNEL_ID ?? '',
   },
   'google-sheet': {
     access_token: process.env.GOOGLE_SHEETS_ACCESS_TOKEN ?? '',
@@ -33,32 +50,25 @@ const ENV_FALLBACKS: Record<string, Record<string, string>> = {
   },
 };
 
-async function getReplitToken(): Promise<string | null> {
-  if (process.env.REPL_IDENTITY) return 'repl ' + process.env.REPL_IDENTITY;
-  if (process.env.WEB_REPL_RENEWAL) return 'depl ' + process.env.WEB_REPL_RENEWAL;
-  return null;
-}
-
 export interface ConnectorSettings {
   settings: Record<string, string>;
   status: string;
 }
 
-async function getReplitConnectorSettings(connectorName: string): Promise<ConnectorSettings | null> {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const token = await getReplitToken();
-  if (!hostname || !token) return null;
+async function getStoredCredentials(service: string, projectId: number): Promise<ConnectorSettings | null> {
+  const [row] = await db
+    .select({ settings: integrationCredentialsTable.settings })
+    .from(integrationCredentialsTable)
+    .where(and(
+      eq(integrationCredentialsTable.projectId, projectId),
+      eq(integrationCredentialsTable.service, service),
+    ))
+    .limit(1);
+  if (!row) return null;
 
-  try {
-    const res = await fetch(
-      `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=${connectorName}`,
-      { headers: { Accept: 'application/json', 'X-Replit-Token': token } }
-    );
-    const data = await res.json() as { items?: ConnectorSettings[] };
-    return data.items?.[0] ?? null;
-  } catch {
-    return null;
-  }
+  const settings = decryptJson<Record<string, string>>(row.settings);
+  if (!settings || Object.values(settings).every((v) => !v)) return null;
+  return { settings, status: 'connected' };
 }
 
 function getEnvFallback(connectorName: string): ConnectorSettings | null {
@@ -69,19 +79,22 @@ function getEnvFallback(connectorName: string): ConnectorSettings | null {
   return { settings: envSettings, status: 'connected' };
 }
 
-export async function getConnectorSettings(connectorName: string): Promise<ConnectorSettings | null> {
-  const replit = await getReplitConnectorSettings(connectorName);
-  if (replit && Object.keys(replit.settings ?? {}).length > 0) return replit;
+export async function getConnectorSettings(connectorName: string, projectId?: number): Promise<ConnectorSettings | null> {
+  if (projectId) {
+    const stored = await getStoredCredentials(connectorName, projectId);
+    if (stored) return stored;
+  }
   return getEnvFallback(connectorName);
 }
 
-export async function checkConnectionStatus(connectorName: string): Promise<boolean> {
-  const settings = await getConnectorSettings(connectorName);
+export async function checkConnectionStatus(connectorName: string, projectId?: number): Promise<boolean> {
+  const settings = await getConnectorSettings(connectorName, projectId);
   return settings !== null && Object.keys(settings.settings ?? {}).length > 0;
 }
 
-export async function getAllConnectionStatuses(): Promise<Record<string, boolean>> {
-  const services = ['hubspot', 'sendgrid', 'resend', 'slack', 'google-sheet', 'google-drive', 'notion', 'box'];
-  const results = await Promise.all(services.map(async (s) => [s, await checkConnectionStatus(s)] as const));
+export async function getAllConnectionStatuses(projectId?: number): Promise<Record<string, boolean>> {
+  const results = await Promise.all(
+    SUPPORTED_SERVICES.map(async (s) => [s, await checkConnectionStatus(s, projectId)] as const),
+  );
   return Object.fromEntries(results);
 }

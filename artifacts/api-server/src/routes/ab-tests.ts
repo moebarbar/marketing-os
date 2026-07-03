@@ -6,7 +6,7 @@ import { eq, and } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.get("/ab-tests", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const tests = await db
     .select()
     .from(abTestsTable)
@@ -15,7 +15,8 @@ router.get("/ab-tests", async (req, res) => {
 });
 
 router.post("/ab-tests", async (req, res) => {
-  const { name, projectId, controlUrl, variantUrl, goal } = req.body;
+  const { name, controlUrl, variantUrl, goal } = req.body;
+  const projectId = req.projectId!;
 
   const control = {
     name: "Control",
@@ -48,7 +49,7 @@ router.patch("/ab-tests/:id", async (req, res) => {
   if (status) updates.status = status;
   if (winner !== undefined) updates.winner = winner;
   if (status === "running" && !updates.startedAt) updates.startedAt = new Date();
-  const [test] = await db.update(abTestsTable).set(updates).where(eq(abTestsTable.id, id)).returning();
+  const [test] = await db.update(abTestsTable).set(updates).where(and(eq(abTestsTable.id, id), eq(abTestsTable.projectId, req.projectId!))).returning();
   if (!test) return res.status(404).json({ error: "Not found" });
   return res.json(test);
 });

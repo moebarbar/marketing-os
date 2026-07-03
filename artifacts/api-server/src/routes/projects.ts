@@ -7,7 +7,7 @@ import { randomBytes } from "crypto";
 const router: IRouter = Router();
 
 router.get("/projects", async (req, res) => {
-  const projects = await db.select().from(projectsTable).orderBy(projectsTable.createdAt);
+  const projects = await db.select().from(projectsTable).where(eq(projectsTable.id, req.projectId!));
   res.json(projects);
 });
 
@@ -19,14 +19,13 @@ router.post("/projects", async (req, res) => {
 });
 
 router.get("/projects/:projectId", async (req, res) => {
-  const id = parseInt(req.params.projectId);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, id));
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, req.projectId!));
   if (!project) return res.status(404).json({ error: "Project not found" });
-  res.json(project);
+  return res.json(project);
 });
 
 router.get("/projects/:projectId/tracking-snippet", async (req, res) => {
-  const id = parseInt(req.params.projectId);
+  const id = req.projectId!;
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, id));
   if (!project) return res.status(404).json({ error: "Project not found" });
 
@@ -41,7 +40,7 @@ router.get("/projects/:projectId/tracking-snippet", async (req, res) => {
 })(window,document,'script','${project.trackingId}');
 </script>`;
 
-  res.json({ projectId: id, trackingId: project.trackingId, snippet });
+  return res.json({ projectId: id, trackingId: project.trackingId, snippet });
 });
 
 export default router;

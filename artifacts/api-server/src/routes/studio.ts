@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { studioProjectsTable } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+import { meterAiUsage } from "../middleware/plan.js";
 
 const router: IRouter = Router();
 
@@ -31,18 +32,19 @@ If the user asks for copy improvements, analysis, or non-HTML tasks, set generat
 
 // ─── List studio projects ───────────────────────────────────────────────────
 router.get("/studio/projects", async (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   const projects = await db
     .select()
     .from(studioProjectsTable)
     .where(eq(studioProjectsTable.projectId, projectId))
     .orderBy(desc(studioProjectsTable.updatedAt));
-  res.json({ projects });
+  return res.json({ projects });
 });
 
 // ─── Save (create or update) a studio project ───────────────────────────────
 router.post("/studio/projects/save", async (req: Request, res: Response) => {
-  const { id, name, projectType, projectData, projectId = 1 } = req.body;
+  const { id, name, projectType, projectData } = req.body;
+  const projectId = req.projectId!;
 
   if (id) {
     // Update
@@ -69,13 +71,13 @@ router.post("/studio/projects/save", async (req: Request, res: Response) => {
       projectData: projectData || {},
     })
     .returning();
-  res.status(201).json({ project: created });
+  return res.status(201).json({ project: created });
 });
 
 // ─── Load a single studio project ───────────────────────────────────────────
 router.get("/studio/projects/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const id = parseInt(String(req.params.id));
+  const projectId = req.projectId!;
 
   const [project] = await db
     .select()
@@ -83,18 +85,20 @@ router.get("/studio/projects/:id", async (req: Request, res: Response) => {
     .where(and(eq(studioProjectsTable.id, id), eq(studioProjectsTable.projectId, projectId)));
 
   if (!project) return res.status(404).json({ error: "Project not found" });
-  res.json({ project });
+  return res.json({ project });
 });
 
 // ─── Delete a studio project ─────────────────────────────────────────────────
 router.delete("/studio/projects/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-  await db.delete(studioProjectsTable).where(eq(studioProjectsTable.id, id));
+  const id = parseInt(String(req.params.id));
+  await db
+    .delete(studioProjectsTable)
+    .where(and(eq(studioProjectsTable.id, id), eq(studioProjectsTable.projectId, req.projectId!)));
   res.json({ ok: true });
 });
 
 // ─── AI Generate ─────────────────────────────────────────────────────────────
-router.post("/studio/ai/generate", async (req: Request, res: Response) => {
+router.post("/studio/ai/generate", meterAiUsage(), async (req: Request, res: Response) => {
   const { message, conversationHistory = [] } = req.body;
 
   if (!message) return res.status(400).json({ error: "message required" });
@@ -136,10 +140,10 @@ router.post("/studio/ai/generate", async (req: Request, res: Response) => {
       parsed = { message: responseText, generatedHtml: null };
     }
 
-    res.json(parsed);
+    return res.json(parsed);
   } catch (err) {
     console.error("Studio AI error:", err);
-    res.status(500).json({ message: "AI generation failed. Please try again.", generatedHtml: null });
+    return res.status(500).json({ message: "AI generation failed. Please try again.", generatedHtml: null });
   }
 });
 

@@ -1,11 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { leadsTable, contentHistoryTable, seoReportsTable, emailCampaignsTable } from "@workspace/db/schema";
-import { count, gte, sql } from "drizzle-orm";
+import { count, gte, sql, eq, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-router.get("/dashboard/overview", async (_req, res) => {
+router.get("/dashboard/overview", async (req, res) => {
+  const projectId = req.projectId!;
   const now = new Date();
   const thirtyDaysAgo = new Date(now);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -14,18 +15,19 @@ router.get("/dashboard/overview", async (_req, res) => {
 
   const [{ totalLeads }] = await db
     .select({ totalLeads: count() })
-    .from(leadsTable);
+    .from(leadsTable)
+    .where(eq(leadsTable.projectId, projectId));
 
   const [{ recentLeads }] = await db
     .select({ recentLeads: count() })
     .from(leadsTable)
-    .where(gte(leadsTable.createdAt, thirtyDaysAgo));
+    .where(and(eq(leadsTable.projectId, projectId), gte(leadsTable.createdAt, thirtyDaysAgo)));
 
   const [{ prevLeads }] = await db
     .select({ prevLeads: count() })
     .from(leadsTable)
     .where(
-      sql`${leadsTable.createdAt} >= ${sixtyDaysAgo} AND ${leadsTable.createdAt} < ${thirtyDaysAgo}`
+      sql`${leadsTable.projectId} = ${projectId} AND ${leadsTable.createdAt} >= ${sixtyDaysAgo} AND ${leadsTable.createdAt} < ${thirtyDaysAgo}`
     );
 
   const leadsChange = prevLeads > 0
@@ -69,7 +71,7 @@ router.get("/dashboard/visitors", async (req, res) => {
 });
 
 router.get("/ai/recommendations", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
 
   const [
     [{ totalLeads }],

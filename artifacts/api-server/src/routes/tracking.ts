@@ -44,28 +44,35 @@ router.get("/tracking.js", async (req: Request, res: Response) => {
 
   res.setHeader("Content-Type", "application/javascript");
   res.setHeader("Cache-Control", "public, max-age=300");
-  res.send(script);
+  return res.send(script);
 });
 
 // POST /track — receive events from any site (open CORS)
 router.post("/track", async (req: Request, res: Response) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  const { trackingId, visitorId, sessionId, type, url, referrer, title, clickX, clickY, event, ...rest } = req.body;
-  if (!trackingId || !type) return res.status(400).json({ error: "trackingId and type required" });
+  const { trackingId, visitorId, sessionId, type, url, referrer, title, clickX, clickY, event, ...rest } = req.body ?? {};
+  if (typeof trackingId !== "string" || typeof type !== "string") {
+    return res.status(400).json({ error: "trackingId and type required" });
+  }
+  if (!["pageview", "click", "custom", "identify"].includes(type)) {
+    return res.status(400).json({ error: "Unknown event type" });
+  }
+  const clamp = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : null);
+  const clampNum = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : null);
 
   const [project] = await db.select({ id: projectsTable.id }).from(projectsTable).where(eq(projectsTable.trackingId, trackingId)).limit(1);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const [row] = await db.insert(pageEventsTable).values({
     projectId: project.id,
-    visitorId,
-    sessionId,
+    visitorId: clamp(visitorId, 64),
+    sessionId: clamp(sessionId, 64),
     eventType: type,
-    url,
-    referrer,
-    title,
-    clickX: clickX ?? null,
-    clickY: clickY ?? null,
+    url: clamp(url, 2048),
+    referrer: clamp(referrer, 2048),
+    title: clamp(title, 512),
+    clickX: clampNum(clickX),
+    clickY: clampNum(clickY),
     metadata: event ? { event, ...rest } : rest,
   }).returning();
 
@@ -84,7 +91,7 @@ router.options("/track", (req: Request, res: Response) => {
 
 // GET /analytics/realtime — SSE stream of live events
 router.get("/analytics/realtime", (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -118,14 +125,14 @@ async function getLiveVisitorCount(projectId: number) {
 
 // GET /analytics/realtime/count — simple poll fallback
 router.get("/analytics/realtime/count", async (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   const liveVisitors = await getLiveVisitorCount(projectId);
   return res.json({ liveVisitors });
 });
 
 // GET /analytics/overview — real data
 router.get("/analytics/overview", async (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   const days = parseInt(req.query.days as string) || 30;
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const prevSince = new Date(Date.now() - days * 2 * 24 * 60 * 60 * 1000);
@@ -169,7 +176,7 @@ router.get("/analytics/overview", async (req: Request, res: Response) => {
 
 // GET /analytics/pages — top pages by real pageviews
 router.get("/analytics/pages", async (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
   const rows = await db
@@ -199,7 +206,7 @@ router.get("/analytics/pages", async (req: Request, res: Response) => {
 
 // GET /analytics/heatmap — click positions for a URL
 router.get("/analytics/heatmap", async (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   const url = req.query.url as string;
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -218,7 +225,7 @@ router.get("/analytics/heatmap", async (req: Request, res: Response) => {
 
 // GET /analytics/funnel — real funnel step data
 router.get("/analytics/funnel", async (req: Request, res: Response) => {
-  const projectId = parseInt(req.query.projectId as string) || 1;
+  const projectId = req.projectId!;
   const steps = (req.query.steps as string[]) ?? [];
   if (!steps.length) return res.json({ steps: [] });
 

@@ -1,13 +1,13 @@
 import { db } from "@workspace/db";
 import { leadsTable, contentHistoryTable, seoReportsTable, emailCampaignsTable, usersTable } from "@workspace/db/schema";
-import { eq, gte, count, desc } from "drizzle-orm";
+import { eq, and, gte, count, desc } from "drizzle-orm";
 
 async function generateWeeklyReport(projectId: number): Promise<string> {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [[{ totalLeads }], [{ newLeads }], [{ totalContent }], recentSeo, [{ campaigns }]] = await Promise.all([
     db.select({ totalLeads: count() }).from(leadsTable).where(eq(leadsTable.projectId, projectId)),
-    db.select({ newLeads: count() }).from(leadsTable).where(eq(leadsTable.projectId, projectId)).where(gte(leadsTable.createdAt, since)),
+    db.select({ newLeads: count() }).from(leadsTable).where(and(eq(leadsTable.projectId, projectId), gte(leadsTable.createdAt, since))),
     db.select({ totalContent: count() }).from(contentHistoryTable).where(eq(contentHistoryTable.projectId, projectId)),
     db.select({ url: seoReportsTable.url, score: seoReportsTable.score }).from(seoReportsTable).where(eq(seoReportsTable.projectId, projectId)).orderBy(desc(seoReportsTable.createdAt)).limit(1),
     db.select({ campaigns: count() }).from(emailCampaignsTable).where(eq(emailCampaignsTable.projectId, projectId)),

@@ -5,8 +5,8 @@ export async function sendCampaignViaResend(opts: {
   to: string[];
   subject: string;
   body: string;
-}): Promise<{ success: boolean; error?: string }> {
-  const settings = await getConnectorSettings('resend');
+}, projectId?: number): Promise<{ success: boolean; error?: string }> {
+  const settings = await getConnectorSettings('resend', projectId);
   if (!settings?.settings?.api_key) {
     return { success: false, error: 'Resend not connected. Please connect Resend in the Integrations page.' };
   }

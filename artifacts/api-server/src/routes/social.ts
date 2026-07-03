@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { socialPostsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
 router.get("/social/posts", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const posts = await db
     .select()
     .from(socialPostsTable)
@@ -16,7 +16,8 @@ router.get("/social/posts", async (req, res) => {
 });
 
 router.post("/social/posts", async (req, res) => {
-  const { content, platforms, projectId, scheduledAt } = req.body;
+  const { content, platforms, scheduledAt } = req.body;
+  const projectId = req.projectId!;
   const [post] = await db
     .insert(socialPostsTable)
     .values({
@@ -36,7 +37,7 @@ router.patch("/social/posts/:id/publish", async (req, res) => {
   const [post] = await db
     .update(socialPostsTable)
     .set({ status: "published", scheduledAt: new Date() })
-    .where(eq(socialPostsTable.id, id))
+    .where(and(eq(socialPostsTable.id, id), eq(socialPostsTable.projectId, req.projectId!)))
     .returning();
   if (!post) return res.status(404).json({ error: "Post not found" });
   return res.json(post);
@@ -45,7 +46,7 @@ router.patch("/social/posts/:id/publish", async (req, res) => {
 // DELETE /social/posts/:id
 router.delete("/social/posts/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  await db.delete(socialPostsTable).where(eq(socialPostsTable.id, id));
+  await db.delete(socialPostsTable).where(and(eq(socialPostsTable.id, id), eq(socialPostsTable.projectId, req.projectId!)));
   return res.json({ ok: true });
 });
 

@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, emailCampaignsTable, contentHistoryTable, seoReportsTable, integrationStatesTable, keywordsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
-import { getAllConnectionStatuses, checkConnectionStatus } from "../integrations/client.js";
+import { leadsTable, emailCampaignsTable, contentHistoryTable, seoReportsTable, integrationStatesTable, integrationCredentialsTable, keywordsTable } from "@workspace/db/schema";
+import { eq, and } from "drizzle-orm";
+import { getAllConnectionStatuses, checkConnectionStatus, SUPPORTED_SERVICES } from "../integrations/client.js";
+import { encryptJson } from "../lib/crypto.js";
 import { syncLeadToHubSpot } from "../integrations/hubspot.js";
 import { sendCampaignViaSendGrid } from "../integrations/sendgrid.js";
 import { sendCampaignViaResend } from "../integrations/resend.js";
@@ -14,31 +15,80 @@ import { pushContentToNotion } from "../integrations/notion.js";
 
 const router: IRouter = Router();
 
-async function getEffectiveStatuses(): Promise<Record<string, boolean>> {
-  const [replit, overrides] = await Promise.all([
-    getAllConnectionStatuses(),
+function isSupportedService(service: string): boolean {
+  return (SUPPORTED_SERVICES as readonly string[]).includes(service);
+}
+
+async function getEffectiveStatuses(projectId: number): Promise<Record<string, boolean>> {
+  const [statuses, overrides] = await Promise.all([
+    getAllConnectionStatuses(projectId),
     db.select().from(integrationStatesTable),
   ]);
   const disconnected = new Set(overrides.filter((r) => r.isDisconnected).map((r) => r.service));
   return Object.fromEntries(
-    Object.entries(replit).map(([k, v]) => [k, v && !disconnected.has(k)])
+    Object.entries(statuses).map(([k, v]) => [k, v && !disconnected.has(k)])
   );
 }
 
-router.get("/integrations/status", async (_req, res) => {
-  const statuses = await getEffectiveStatuses();
+router.get("/integrations/status", async (req, res) => {
+  const statuses = await getEffectiveStatuses(req.projectId!);
   res.json(statuses);
+});
+
+// Store per-project API credentials (encrypted at rest).
+// Body: { settings: { api_key: "...", from_email: "..." } }
+router.post("/integrations/credentials/:service", async (req, res) => {
+  const { service } = req.params;
+  if (!isSupportedService(service)) {
+    return res.status(400).json({ error: `Unknown service: ${service}` });
+  }
+
+  const settings = req.body?.settings;
+  if (!settings || typeof settings !== "object" || Object.values(settings).every((v) => !v)) {
+    return res.status(400).json({ error: "settings object with at least one value is required" });
+  }
+
+  const encrypted = encryptJson(settings);
+  await db
+    .insert(integrationCredentialsTable)
+    .values({ projectId: req.projectId!, service, settings: encrypted })
+    .onConflictDoUpdate({
+      target: [integrationCredentialsTable.projectId, integrationCredentialsTable.service],
+      set: { settings: encrypted, updatedAt: new Date() },
+    });
+
+  // Clear any manual disconnect override so the service shows as connected
+  await db
+    .insert(integrationStatesTable)
+    .values({ service, isDisconnected: false })
+    .onConflictDoUpdate({
+      target: integrationStatesTable.service,
+      set: { isDisconnected: false, updatedAt: new Date() },
+    });
+
+  return res.json({ connected: true, service });
+});
+
+router.delete("/integrations/credentials/:service", async (req, res) => {
+  const { service } = req.params;
+  await db
+    .delete(integrationCredentialsTable)
+    .where(and(
+      eq(integrationCredentialsTable.projectId, req.projectId!),
+      eq(integrationCredentialsTable.service, service),
+    ));
+  return res.json({ success: true, service, connected: false });
 });
 
 router.post("/integrations/connect/:service", async (req, res) => {
   const { service } = req.params;
-  const isConnected = await checkConnectionStatus(service);
+  const isConnected = await checkConnectionStatus(service, req.projectId!);
 
   if (!isConnected) {
     res.json({
       connected: false,
       service,
-      message: `${service} is not configured. Set the required environment variable(s) in your Railway dashboard to enable this integration.`,
+      message: `${service} is not configured. Add an API key for it on this page, or set the corresponding environment variable on the server.`,
     });
     return;
   }
@@ -56,6 +106,14 @@ router.post("/integrations/connect/:service", async (req, res) => {
 
 router.post("/integrations/disconnect/:service", async (req, res) => {
   const { service } = req.params;
+  // Remove this project's stored credentials; the override below also
+  // suppresses any server-wide env-var fallback.
+  await db
+    .delete(integrationCredentialsTable)
+    .where(and(
+      eq(integrationCredentialsTable.projectId, req.projectId!),
+      eq(integrationCredentialsTable.service, service),
+    ));
   await db
     .insert(integrationStatesTable)
     .values({ service, isDisconnected: true })
@@ -68,8 +126,13 @@ router.post("/integrations/disconnect/:service", async (req, res) => {
 
 router.post("/integrations/hubspot/sync-lead", async (req, res) => {
   const { leadId } = req.body;
+  const projectId = req.projectId!;
 
-  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId)).limit(1);
+  const [lead] = await db
+    .select()
+    .from(leadsTable)
+    .where(and(eq(leadsTable.id, leadId), eq(leadsTable.projectId, projectId)))
+    .limit(1);
 
   if (!lead) {
     return res.status(404).json({ error: "Lead not found" });
@@ -82,9 +145,9 @@ router.post("/integrations/hubspot/sync-lead", async (req, res) => {
     company: lead.company ?? undefined,
     leadScore: lead.score,
     source: lead.source,
-  });
+  }, projectId);
 
-  res.json(result);
+  return res.json(result);
 });
 
 function resolveRecipients(campaign: { recipientList?: string | null }, to?: unknown): string[] | null {
@@ -97,8 +160,13 @@ function resolveRecipients(campaign: { recipientList?: string | null }, to?: unk
 
 router.post("/integrations/sendgrid/send-campaign", async (req, res) => {
   const { campaignId, to } = req.body;
+  const projectId = req.projectId!;
 
-  const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, campaignId)).limit(1);
+  const [campaign] = await db
+    .select()
+    .from(emailCampaignsTable)
+    .where(and(eq(emailCampaignsTable.id, campaignId), eq(emailCampaignsTable.projectId, projectId)))
+    .limit(1);
   if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
   const recipients = resolveRecipients(campaign, to);
@@ -116,23 +184,28 @@ router.post("/integrations/sendgrid/send-campaign", async (req, res) => {
     to: recipients,
     subject: campaign.subject,
     body: campaign.body,
-  });
+  }, projectId);
 
   if (result.success) {
     await db.update(emailCampaignsTable)
       .set({ status: 'sent', recipients: recipients.length })
       .where(eq(emailCampaignsTable.id, campaignId));
 
-    await notifyCampaignSent({ name: campaign.name, recipients: recipients.length }).catch(() => {});
+    await notifyCampaignSent({ name: campaign.name, recipients: recipients.length }, projectId).catch(() => {});
   }
 
-  res.json(result);
+  return res.json(result);
 });
 
 router.post("/integrations/resend/send-campaign", async (req, res) => {
   const { campaignId, to } = req.body;
+  const projectId = req.projectId!;
 
-  const [campaign] = await db.select().from(emailCampaignsTable).where(eq(emailCampaignsTable.id, campaignId)).limit(1);
+  const [campaign] = await db
+    .select()
+    .from(emailCampaignsTable)
+    .where(and(eq(emailCampaignsTable.id, campaignId), eq(emailCampaignsTable.projectId, projectId)))
+    .limit(1);
   if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
   const recipients = resolveRecipients(campaign, to);
@@ -150,39 +223,41 @@ router.post("/integrations/resend/send-campaign", async (req, res) => {
     to: recipients,
     subject: campaign.subject,
     body: campaign.body,
-  });
+  }, projectId);
 
   if (result.success) {
     await db.update(emailCampaignsTable)
       .set({ status: 'sent', recipients: recipients.length })
       .where(eq(emailCampaignsTable.id, campaignId));
 
-    await notifyCampaignSent({ name: campaign.name, recipients: recipients.length }).catch(() => {});
+    await notifyCampaignSent({ name: campaign.name, recipients: recipients.length }, projectId).catch(() => {});
   }
 
-  res.json(result);
+  return res.json(result);
 });
 
 router.post("/integrations/slack/notify", async (req, res) => {
   const { message, testName, winner, confidence } = req.body;
+  const projectId = req.projectId!;
 
   let result;
   if (testName) {
-    result = await notifyAbTestComplete({ name: testName, winner: winner ?? 'variant', confidence: confidence ?? 95 });
+    result = await notifyAbTestComplete({ name: testName, winner: winner ?? 'variant', confidence: confidence ?? 95 }, projectId);
   } else {
-    result = await sendSlackNotification(message || 'Hello from ChiefMKT!');
+    result = await sendSlackNotification(message || 'Hello from ChiefMKT!', projectId);
   }
 
-  res.json(result);
+  return res.json(result);
 });
 
 router.post("/integrations/sheets/export", async (req, res) => {
-  const { type, projectId } = req.body as { type: ExportType; projectId: number };
+  const { type } = req.body as { type: ExportType };
+  const projectId = req.projectId!;
 
   let rows: Record<string, unknown>[] = [];
 
   if (type === 'leads') {
-    const leads = await db.select().from(leadsTable).where(eq(leadsTable.projectId, projectId ?? 1)).limit(500);
+    const leads = await db.select().from(leadsTable).where(eq(leadsTable.projectId, projectId)).limit(500);
     rows = leads.map(l => ({
       Name: l.name ?? '',
       Email: l.email,
@@ -203,7 +278,7 @@ router.post("/integrations/sheets/export", async (req, res) => {
       { Metric: 'Returning Visitors', Value: 8658 },
     ];
   } else if (type === 'keywords') {
-    const keywords = await db.select().from(keywordsTable).where(eq(keywordsTable.projectId, projectId ?? 1)).limit(500);
+    const keywords = await db.select().from(keywordsTable).where(eq(keywordsTable.projectId, projectId)).limit(500);
     rows = keywords.map(k => ({
       Keyword: k.keyword,
       Volume: k.searchVolume ?? '',
@@ -219,18 +294,23 @@ router.post("/integrations/sheets/export", async (req, res) => {
     return res.json({ success: false, error: `No ${type} data found to export.` });
   }
 
-  const result = await exportToGoogleSheets(type, rows);
-  res.json(result);
+  const result = await exportToGoogleSheets(type, rows, projectId);
+  return res.json(result);
 });
 
 router.post("/integrations/drive/save-report", async (req, res) => {
-  const { reportId, projectId, title, content } = req.body;
+  const { reportId, title, content } = req.body;
+  const projectId = req.projectId!;
 
   let reportContent = content;
   let reportTitle = title;
 
   if (reportId) {
-    const [report] = await db.select().from(seoReportsTable).where(eq(seoReportsTable.id, reportId)).limit(1);
+    const [report] = await db
+      .select()
+      .from(seoReportsTable)
+      .where(and(eq(seoReportsTable.id, reportId), eq(seoReportsTable.projectId, projectId)))
+      .limit(1);
     if (report) {
       reportTitle = reportTitle || `SEO Report — ${report.url} — ${new Date(report.createdAt).toLocaleDateString()}`;
       const issues = Array.isArray(report.issues) ? report.issues as Array<{ type: string; severity: string; message: string; fix: string }> : [];
@@ -250,24 +330,33 @@ ${recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}`;
 
   if (!reportContent) return res.status(400).json({ error: "No content to save." });
 
-  const result = await saveReportToDrive(reportTitle || 'ChiefMKT SEO Report', reportContent);
-  res.json(result);
+  const result = await saveReportToDrive(reportTitle || 'ChiefMKT SEO Report', reportContent, projectId);
+  return res.json(result);
 });
 
 router.post("/integrations/box/upload", async (req, res) => {
   const { contentId, reportId, filename, content } = req.body;
+  const projectId = req.projectId!;
 
   let fileContent = content;
   let fileName = filename;
 
   if (contentId) {
-    const [item] = await db.select().from(contentHistoryTable).where(eq(contentHistoryTable.id, contentId)).limit(1);
+    const [item] = await db
+      .select()
+      .from(contentHistoryTable)
+      .where(and(eq(contentHistoryTable.id, contentId), eq(contentHistoryTable.projectId, projectId)))
+      .limit(1);
     if (item) {
       fileName = fileName || `${item.title}.txt`;
       fileContent = fileContent || item.content;
     }
   } else if (reportId) {
-    const [report] = await db.select().from(seoReportsTable).where(eq(seoReportsTable.id, reportId)).limit(1);
+    const [report] = await db
+      .select()
+      .from(seoReportsTable)
+      .where(and(eq(seoReportsTable.id, reportId), eq(seoReportsTable.projectId, projectId)))
+      .limit(1);
     if (report) {
       fileName = fileName || `SEO_Report_${report.url.replace(/[^a-z0-9]/gi, '_')}.txt`;
       const issues = Array.isArray(report.issues) ? report.issues as Array<{ type: string; severity: string; message: string; fix: string }> : [];
@@ -278,19 +367,24 @@ router.post("/integrations/box/upload", async (req, res) => {
 
   if (!fileContent) return res.status(400).json({ error: "No content to upload." });
 
-  const result = await uploadToBox(fileName || 'chiefmkt_export.txt', fileContent);
-  res.json(result);
+  const result = await uploadToBox(fileName || 'chiefmkt_export.txt', fileContent, projectId);
+  return res.json(result);
 });
 
 router.post("/integrations/notion/push-content", async (req, res) => {
   const { contentId, title, type, body, databaseId } = req.body;
+  const projectId = req.projectId!;
 
   let contentTitle = title;
   let contentType = type;
   let contentBody = body;
 
   if (contentId) {
-    const [item] = await db.select().from(contentHistoryTable).where(eq(contentHistoryTable.id, contentId)).limit(1);
+    const [item] = await db
+      .select()
+      .from(contentHistoryTable)
+      .where(and(eq(contentHistoryTable.id, contentId), eq(contentHistoryTable.projectId, projectId)))
+      .limit(1);
     if (item) {
       contentTitle = contentTitle || item.title;
       contentType = contentType || item.type;
@@ -307,9 +401,9 @@ router.post("/integrations/notion/push-content", async (req, res) => {
     type: contentType || 'content',
     body: contentBody,
     databaseId,
-  });
+  }, projectId);
 
-  res.json(result);
+  return res.json(result);
 });
 
 export default router;

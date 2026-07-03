@@ -6,7 +6,7 @@ import { eq, and, gte, sql, countDistinct } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.get("/funnels", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const funnels = await db
     .select()
     .from(funnelsTable)
@@ -15,10 +15,10 @@ router.get("/funnels", async (req, res) => {
 });
 
 router.post("/funnels", async (req, res) => {
-  const { name, projectId, steps } = req.body;
+  const { name, steps } = req.body;
   const [funnel] = await db
     .insert(funnelsTable)
-    .values({ name, projectId, steps })
+    .values({ name, projectId: req.projectId!, steps })
     .returning();
   res.status(201).json(funnel);
 });
@@ -28,7 +28,7 @@ router.get("/funnels/:funnelId/data", async (req, res) => {
   const [funnel] = await db
     .select()
     .from(funnelsTable)
-    .where(eq(funnelsTable.id, funnelId));
+    .where(and(eq(funnelsTable.id, funnelId), eq(funnelsTable.projectId, req.projectId!)));
 
   if (!funnel) return res.status(404).json({ error: "Funnel not found" });
 
@@ -57,7 +57,7 @@ router.get("/funnels/:funnelId/data", async (req, res) => {
     conversionRate: Math.round((s.visitors / Math.max(first, 1)) * 100),
   }));
 
-  res.json({
+  return res.json({
     funnelId,
     steps: enriched,
     overallConversionRate: enriched.length ? enriched[enriched.length - 1].conversionRate : 0,

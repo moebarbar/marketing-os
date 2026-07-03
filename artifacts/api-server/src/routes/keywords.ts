@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { keywordsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -49,7 +49,7 @@ router.post("/keywords/research", async (req, res) => {
 });
 
 router.get("/keywords/saved", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const keywords = await db
     .select()
     .from(keywordsTable)
@@ -59,17 +59,17 @@ router.get("/keywords/saved", async (req, res) => {
 });
 
 router.post("/keywords/saved", async (req, res) => {
-  const { keyword, searchVolume, difficulty, cpc, trend, intent, projectId } = req.body;
+  const { keyword, searchVolume, difficulty, cpc, trend, intent } = req.body;
   const [saved] = await db
     .insert(keywordsTable)
-    .values({ keyword, searchVolume, difficulty, cpc, trend, intent, projectId })
+    .values({ keyword, searchVolume, difficulty, cpc, trend, intent, projectId: req.projectId! })
     .returning();
   res.status(201).json(saved);
 });
 
 router.delete("/keywords/saved/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  await db.delete(keywordsTable).where(eq(keywordsTable.id, id));
+  await db.delete(keywordsTable).where(and(eq(keywordsTable.id, id), eq(keywordsTable.projectId, req.projectId!)));
   res.json({ success: true });
 });
 

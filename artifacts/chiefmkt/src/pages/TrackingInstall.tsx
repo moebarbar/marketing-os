@@ -1,10 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Code2, Copy, CheckCheck, Zap, MousePointerClick, BarChart3, Eye } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-// Default tracking ID — in production this would come from the project record
-const TRACKING_ID = "proj_1";
 const API_BASE = typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}` : "";
 
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
@@ -25,22 +23,22 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
   );
 }
 
-const SNIPPET = `<!-- ChiefMKT Tracking -->
-<script src="${API_BASE}${BASE}/api/tracking.js?id=${TRACKING_ID}" async></script>`;
-
-const GTM_SNIPPET = `<script>
+const makeSnippets = (trackingId: string) => ({
+  html: `<!-- ChiefMKT Tracking -->
+<script src="${API_BASE}${BASE}/api/tracking.js?id=${trackingId}" async></script>`,
+  gtm: `<script>
   // Google Tag Manager custom HTML tag
   var s = document.createElement('script');
-  s.src = '${API_BASE}${BASE}/api/tracking.js?id=${TRACKING_ID}';
+  s.src = '${API_BASE}${BASE}/api/tracking.js?id=${trackingId}';
   s.async = true;
   document.head.appendChild(s);
-</script>`;
-
-const WP_SNIPPET = `// Add to your theme's functions.php
+</script>`,
+  wordpress: `// Add to your theme's functions.php
 function chiefmkt_tracking_script() {
-  echo '<script src="${API_BASE}${BASE}/api/tracking.js?id=${TRACKING_ID}" async></script>';
+  echo '<script src="${API_BASE}${BASE}/api/tracking.js?id=${trackingId}" async></script>';
 }
-add_action('wp_head', 'chiefmkt_tracking_script');`;
+add_action('wp_head', 'chiefmkt_tracking_script');`,
+});
 
 const FEATURES = [
   { icon: <Eye className="w-5 h-5 text-primary" />, title: "Page Views", desc: "Automatic pageview tracking on every navigation." },
@@ -53,12 +51,18 @@ type Tab = "html" | "gtm" | "wordpress";
 
 export default function TrackingInstall() {
   const [tab, setTab] = useState<Tab>("html");
+  const [trackingId, setTrackingId] = useState<string>("");
 
-  const snippetMap: Record<Tab, string> = {
-    html: SNIPPET,
-    gtm: GTM_SNIPPET,
-    wordpress: WP_SNIPPET,
-  };
+  useEffect(() => {
+    fetch(`${BASE}/api/projects`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((projects: Array<{ trackingId?: string }>) => {
+        if (projects[0]?.trackingId) setTrackingId(projects[0].trackingId);
+      })
+      .catch(() => {});
+  }, []);
+
+  const snippetMap: Record<Tab, string> = makeSnippets(trackingId || "…loading…");
 
   return (
     <div className="space-y-8 pb-12 max-w-4xl mx-auto">
@@ -85,8 +89,8 @@ export default function TrackingInstall() {
       <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-3">
         <h2 className="font-semibold text-white">Your Tracking ID</h2>
         <div className="flex items-center gap-3 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3">
-          <code className="text-primary font-mono text-sm flex-1">{TRACKING_ID}</code>
-          <CopyButton text={TRACKING_ID} label="Copy ID" />
+          <code className="text-primary font-mono text-sm flex-1">{trackingId || "Loading…"}</code>
+          <CopyButton text={trackingId} label="Copy ID" />
         </div>
         <p className="text-xs text-slate-500">This ID links tracking data to your project. Keep it safe — do not share it publicly.</p>
       </div>

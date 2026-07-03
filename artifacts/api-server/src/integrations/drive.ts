@@ -2,9 +2,10 @@ import { getConnectorSettings } from './client.js';
 
 export async function saveReportToDrive(
   filename: string,
-  content: string
+  content: string,
+  projectId?: number
 ): Promise<{ success: boolean; fileUrl?: string; error?: string }> {
-  const settings = await getConnectorSettings('google-drive');
+  const settings = await getConnectorSettings('google-drive', projectId);
   const token = settings?.settings?.access_token;
   if (!token) {
     return { success: false, error: 'Google Drive not connected. Please connect Google Drive in the Integrations page.' };

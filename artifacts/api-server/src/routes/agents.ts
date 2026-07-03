@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { AgentClient } from "@21st-sdk/node";
 import { db } from "@workspace/db";
 import { agentSessions, agentMemory } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -44,14 +44,15 @@ router.post("/agent/token", async (req: Request, res: Response) => {
 
 // Create or resume session
 router.post("/agent/session", async (req: Request, res: Response) => {
-  const { agentSlug, projectId, sessionId } = req.body;
+  const { agentSlug, sessionId } = req.body;
+  const projectId = req.projectId!;
 
   // Resume existing session
   if (sessionId) {
     const existing = await db
       .select()
       .from(agentSessions)
-      .where(eq(agentSessions.id, sessionId))
+      .where(and(eq(agentSessions.id, sessionId), eq(agentSessions.projectId, projectId)))
       .limit(1);
 
     if (existing.length > 0) {
@@ -70,7 +71,7 @@ router.post("/agent/session", async (req: Request, res: Response) => {
     const sandbox = await client.sandboxes.create({
       agent: agentSlug,
       envs: {
-        PROJECT_ID: String(projectId || 1),
+        PROJECT_ID: String(projectId),
         DATABASE_URL: process.env.DATABASE_URL!,
       },
     });
@@ -83,7 +84,7 @@ router.post("/agent/session", async (req: Request, res: Response) => {
     const [session] = await db
       .insert(agentSessions)
       .values({
-        projectId: projectId || 1,
+        projectId,
         agentSlug,
         sandboxId: sandbox.id,
         threadId: thread.id,
@@ -97,12 +98,12 @@ router.post("/agent/session", async (req: Request, res: Response) => {
   }
 });
 
-// List sessions for a project
+// List sessions for the authenticated user's project
 router.get("/agent/sessions/:projectId", async (req: Request, res: Response) => {
   const sessions = await db
     .select()
     .from(agentSessions)
-    .where(eq(agentSessions.projectId, parseInt(req.params.projectId)))
+    .where(eq(agentSessions.projectId, req.projectId!))
     .orderBy(desc(agentSessions.createdAt));
 
   return res.json(sessions);
@@ -110,10 +111,10 @@ router.get("/agent/sessions/:projectId", async (req: Request, res: Response) => 
 
 // Add a memory entry manually
 router.post("/agent/memory", async (req: Request, res: Response) => {
-  const { projectId, key, value, category, importance } = req.body;
+  const { key, value, category, importance } = req.body;
   const [entry] = await db
     .insert(agentMemory)
-    .values({ projectId: parseInt(projectId ?? "1"), key, value, category: category ?? "BUSINESS_CORE", importance: importance ?? 5 })
+    .values({ projectId: req.projectId!, key, value, category: category ?? "BUSINESS_CORE", importance: importance ?? 5 })
     .onConflictDoUpdate({
       target: [agentMemory.projectId, agentMemory.key],
       set: { value, importance: importance ?? 5, updatedAt: new Date() },
@@ -127,7 +128,7 @@ router.get("/agent/memory/:projectId", async (req: Request, res: Response) => {
   const memories = await db
     .select()
     .from(agentMemory)
-    .where(eq(agentMemory.projectId, parseInt(req.params.projectId)))
+    .where(eq(agentMemory.projectId, req.projectId!))
     .orderBy(desc(agentMemory.importance));
 
   return res.json(memories);
@@ -139,13 +140,13 @@ router.patch("/agent/memory/:id", async (req: Request, res: Response) => {
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (value !== undefined) updates.value = value;
   if (importance !== undefined) updates.importance = importance;
-  await db.update(agentMemory).set(updates).where(eq(agentMemory.id, req.params.id));
+  await db.update(agentMemory).set(updates).where(and(eq(agentMemory.id, String(req.params.id)), eq(agentMemory.projectId, req.projectId!)));
   return res.json({ updated: true });
 });
 
 // Delete a memory entry
 router.delete("/agent/memory/:id", async (req: Request, res: Response) => {
-  await db.delete(agentMemory).where(eq(agentMemory.id, req.params.id));
+  await db.delete(agentMemory).where(and(eq(agentMemory.id, String(req.params.id)), eq(agentMemory.projectId, req.projectId!)));
   return res.json({ deleted: true });
 });
 

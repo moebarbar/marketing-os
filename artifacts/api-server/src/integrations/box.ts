@@ -2,9 +2,10 @@ import { getConnectorSettings } from './client.js';
 
 export async function uploadToBox(
   filename: string,
-  content: string
+  content: string,
+  projectId?: number
 ): Promise<{ success: boolean; fileUrl?: string; error?: string }> {
-  const settings = await getConnectorSettings('box');
+  const settings = await getConnectorSettings('box', projectId);
   const token = settings?.settings?.access_token;
   if (!token) {
     return { success: false, error: 'Box not connected. Please connect Box in the Integrations page.' };

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 const router: IRouter = Router();
 
 router.get("/email/campaigns", async (req, res) => {
-  const projectId = parseInt(req.query.projectId as string);
+  const projectId = req.projectId!;
   const campaigns = await db
     .select()
     .from(emailCampaignsTable)
@@ -16,7 +16,8 @@ router.get("/email/campaigns", async (req, res) => {
 });
 
 router.post("/email/campaigns", async (req, res) => {
-  const { name, subject, body, projectId, scheduledAt } = req.body;
+  const { name, subject, body, scheduledAt } = req.body;
+  const projectId = req.projectId!;
   const [campaign] = await db
     .insert(emailCampaignsTable)
     .values({

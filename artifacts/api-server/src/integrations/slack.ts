@@ -1,7 +1,7 @@
 import { getConnectorSettings } from './client.js';
 
-export async function sendSlackNotification(message: string): Promise<{ success: boolean; error?: string }> {
-  const settings = await getConnectorSettings('slack');
+export async function sendSlackNotification(message: string, projectId?: number): Promise<{ success: boolean; error?: string }> {
+  const settings = await getConnectorSettings('slack', projectId);
   if (!settings?.settings) {
     return { success: false, error: 'Slack not connected. Please connect Slack in the Integrations page.' };
   }
@@ -37,17 +37,17 @@ export async function sendSlackNotification(message: string): Promise<{ success:
   return { success: false, error: 'Slack credentials incomplete.' };
 }
 
-export async function notifyHighScoreLead(lead: { name?: string; email: string; score: number; company?: string }) {
+export async function notifyHighScoreLead(lead: { name?: string; email: string; score: number; company?: string }, projectId?: number) {
   const message = `🔥 *High-Score Lead Alert!*\n*${lead.name || lead.email}* from *${lead.company || 'Unknown Company'}* just scored *${lead.score}/100* on ChiefMKT.\nTime to reach out!`;
-  return sendSlackNotification(message);
+  return sendSlackNotification(message, projectId);
 }
 
-export async function notifyAbTestComplete(test: { name: string; winner: string; confidence: number }) {
+export async function notifyAbTestComplete(test: { name: string; winner: string; confidence: number }, projectId?: number) {
   const message = `🧪 *A/B Test Completed: ${test.name}*\nWinner: *${test.winner}* with *${test.confidence}%* confidence.\nCheck ChiefMKT for full results.`;
-  return sendSlackNotification(message);
+  return sendSlackNotification(message, projectId);
 }
 
-export async function notifyCampaignSent(campaign: { name: string; recipients: number }) {
+export async function notifyCampaignSent(campaign: { name: string; recipients: number }, projectId?: number) {
   const message = `📧 *Campaign Sent: ${campaign.name}*\nDelivered to *${campaign.recipients.toLocaleString()}* recipients via ChiefMKT.`;
-  return sendSlackNotification(message);
+  return sendSlackNotification(message, projectId);
 }
