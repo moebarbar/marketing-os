@@ -29,4 +29,5 @@ RUN pnpm --filter @workspace/chiefmkt build && \
 
 EXPOSE 3000
 
-CMD ["node", "artifacts/api-server/dist/index.mjs"]
+# Sync DB schema (drizzle-kit push, idempotent) then start — see railway-start.sh
+CMD ["sh", "railway-start.sh"]
