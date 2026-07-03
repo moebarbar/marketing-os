@@ -94,10 +94,12 @@ A proven pattern already exists in the sibling `seo-saas` project: **determinist
 - [x] **Real content generator**: blog/ad/social/email/landing/product through the AI service with `agent_memory` brand context; static templates kept only as the offline fallback; deterministic SEO-quality heuristic replaces the random score.
 - [x] **Dashboard on real data only**: visitors, pageviews, bounce rate (single-pageview sessions), avg session duration, conversion rate, and the trend chart all computed from `page_events`; the `Math.random()` generators are gone; `hasRealData` flag for empty states.
 - [x] **A/B testing — sticky assignment**: deterministic hash-of-visitorId split, persisted in localStorage so a returning visitor is never reassigned; embed snippet + convert call fixed (CORS, single source of truth); two-proportion confidence retained.
-- [ ] **Keywords & competitors**: wire DataForSEO (cheapest credible source, pay-per-call) behind the existing UI; degrade gracefully to "connect a data source" instead of fake numbers.
-- [ ] Real PageSpeed wired into the SEO report (PSI API path already exists in `routes/seo.ts`).
+- [x] **Keywords & competitors** on DataForSEO (`integrations/dataforseo.ts`): real keyword ideas (volume/difficulty/CPC/trend/intent) and competitor domain metrics when connected; honest empty state + "connect a data source" banner otherwise — **no fabricated numbers**. New encrypted `dataforseo` credential + Integrations card.
+- [x] **Real PageSpeed** wired into the SEO report (`fetchPageSpeed`): real Core Web Vitals attached to every audit and the standalone endpoint when `GOOGLE_PAGESPEED_API_KEY` is set; honest null otherwise (replaced the hardcoded demo scores).
+- [x] **Tracking SDK enriched**: scroll-depth (25/50/75/100% thresholds, once each) and form-submit events (id/name/action only — never field values); server allowlist + storage verified.
 - [ ] **Email sending** delivery/open webhook ingestion (send path already real via Resend/SendGrid).
-- [ ] Scroll-depth + form-submit events in the tracking SDK (feeds heatmaps and lead capture).
+
+**Verified** (smoke test): keywords/competitors/pagespeed all return honest empty states with no fake numbers when unconnected; tracking.js emits scroll + form_submit and a `depth:75` scroll event round-trips into `page_events.metadata`.
 
 **Verified end-to-end** (throwaway Postgres smoke test): real audit of example.com (score 62, 7 real issues), SSRF guard blocks localhost + `169.254.169.254`, dashboard shows real 2-visitor / 3-pageview / 50%-bounce data, A/B sticky assignment counts the same side twice without flipping. Needs `ANTHROPIC_API_KEY` on Railway to activate AI (falls back cleanly without it).
 

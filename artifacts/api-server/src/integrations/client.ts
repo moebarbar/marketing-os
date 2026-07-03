@@ -16,6 +16,7 @@ export const SUPPORTED_SERVICES = [
   "google-drive",
   "notion",
   "box",
+  "dataforseo",
 ] as const;
 
 const ENV_FALLBACKS: Record<string, Record<string, string>> = {
@@ -47,6 +48,10 @@ const ENV_FALLBACKS: Record<string, Record<string, string>> = {
   },
   box: {
     access_token: process.env.BOX_ACCESS_TOKEN ?? '',
+  },
+  dataforseo: {
+    login: process.env.DATAFORSEO_LOGIN ?? '',
+    password: process.env.DATAFORSEO_PASSWORD ?? '',
   },
 };
 

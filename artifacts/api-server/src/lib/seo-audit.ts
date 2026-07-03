@@ -218,6 +218,46 @@ export function analyzeHtml(html: string, url: string): SeoAuditResult {
   };
 }
 
+export interface PageSpeedResult {
+  score: number;
+  lcp: string;
+  fid: string;
+  cls: string;
+  ttfb: string;
+  fcp: string;
+}
+
+// Real Core Web Vitals via Google PageSpeed Insights (free API key). Returns
+// null when no key is configured or the call fails.
+export async function fetchPageSpeed(url: string): Promise<{ mobile: PageSpeedResult; desktop: PageSpeedResult } | null> {
+  const apiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const run = (strategy: "mobile" | "desktop") =>
+      fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=${strategy}&key=${apiKey}`).then((r) => r.json());
+    const [mobile, desktop] = await Promise.all([run("mobile"), run("desktop")]);
+
+    const extract = (data: Record<string, unknown>): PageSpeedResult => {
+      const lh = data.lighthouseResult as Record<string, unknown> | undefined;
+      const perf = (lh?.categories as Record<string, unknown>)?.performance as Record<string, unknown> | undefined;
+      const audits = (lh?.audits as Record<string, unknown>) ?? {};
+      const val = (k: string) => ((audits[k] as Record<string, unknown>)?.displayValue as string) ?? "N/A";
+      return {
+        score: typeof perf?.score === "number" ? Math.round(perf.score * 100) : 0,
+        lcp: val("largest-contentful-paint"),
+        fid: val("total-blocking-time"),
+        cls: val("cumulative-layout-shift"),
+        ttfb: val("server-response-time"),
+        fcp: val("first-contentful-paint"),
+      };
+    };
+
+    return { mobile: extract(mobile as Record<string, unknown>), desktop: extract(desktop as Record<string, unknown>) };
+  } catch {
+    return null;
+  }
+}
+
 // One bounded Claude call to turn the deterministic findings into prioritized,
 // page-specific recommendations. Falls back to the deterministic list.
 export async function aiRecommendations(url: string, result: SeoAuditResult): Promise<string[]> {

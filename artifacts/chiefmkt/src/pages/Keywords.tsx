@@ -111,7 +111,20 @@ export default function Keywords() {
 
       {isPending && <PageLoader />}
 
-      {results && !isPending && (
+      {results && !isPending && (results as { source?: string }).source === "none" && (
+        <div className="glass-panel rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 flex items-start gap-3">
+          <Search className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-bold text-white mb-1">Connect a data source for real keyword metrics</h3>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              {(results as { note?: string }).note ?? "Connect DataForSEO on the Integrations page to see real search volume, difficulty, and CPC."}
+            </p>
+            <a href="./integrations" className="inline-block mt-3 text-sm font-medium text-primary hover:underline">Go to Integrations →</a>
+          </div>
+        </div>
+      )}
+
+      {results && !isPending && (results as { source?: string }).source !== "none" && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <span className="text-sm font-medium text-slate-400 py-1.5 px-3">Related:</span>

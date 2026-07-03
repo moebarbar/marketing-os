@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { seoReportsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { fetchPage, analyzeHtml, aiRecommendations } from "../lib/seo-audit.js";
+import { fetchPage, analyzeHtml, aiRecommendations, fetchPageSpeed } from "../lib/seo-audit.js";
 import { meterAiUsage } from "../middleware/plan.js";
 
 const router: IRouter = Router();
@@ -21,7 +21,10 @@ router.post("/seo/analyze", meterAiUsage(), async (req, res) => {
   }
 
   const result = analyzeHtml(page.html, page.finalUrl);
-  const recommendations = await aiRecommendations(page.finalUrl, result);
+  const [recommendations, pageSpeed] = await Promise.all([
+    aiRecommendations(page.finalUrl, result),
+    fetchPageSpeed(page.finalUrl),
+  ]);
 
   await db
     .insert(seoReportsTable)
@@ -32,7 +35,7 @@ router.post("/seo/analyze", meterAiUsage(), async (req, res) => {
       issues: result.issues,
       recommendations,
       metaTags: result.metaTags,
-      pageSpeed: {},
+      pageSpeed: pageSpeed ?? {},
     })
     .returning();
 
@@ -43,7 +46,7 @@ router.post("/seo/analyze", meterAiUsage(), async (req, res) => {
     recommendations,
     metaTags: result.metaTags,
     stats: result.stats,
-    pageSpeed: null,
+    pageSpeed,
   });
 });
 
@@ -176,51 +179,21 @@ router.post("/seo/schema-generate", async (req, res) => {
 // POST /seo/pagespeed
 router.post("/seo/pagespeed", async (req, res) => {
   const { url } = req.body;
-  if (!url) return res.status(400).json({ error: "url is required" });
-
-  const apiKey = process.env.GOOGLE_PAGESPEED_API_KEY;
-
-  if (apiKey) {
-    try {
-      const [mobileRes, desktopRes] = await Promise.all([
-        fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=mobile&key=${apiKey}`),
-        fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=desktop&key=${apiKey}`),
-      ]);
-      const [mobile, desktop] = await Promise.all([mobileRes.json(), desktopRes.json()]);
-
-      const extract = (data: Record<string, unknown>) => {
-        const cats = data.lighthouseResult as Record<string, unknown>;
-        const score = Math.round(((cats?.categories as Record<string, unknown>)?.performance as Record<string, unknown>)?.score as number * 100);
-        const audits = (cats?.audits as Record<string, unknown>) ?? {};
-        return {
-          score,
-          lcp: (audits["largest-contentful-paint"] as Record<string, unknown>)?.displayValue ?? "N/A",
-          fid: (audits["total-blocking-time"] as Record<string, unknown>)?.displayValue ?? "N/A",
-          cls: (audits["cumulative-layout-shift"] as Record<string, unknown>)?.displayValue ?? "N/A",
-          ttfb: (audits["server-response-time"] as Record<string, unknown>)?.displayValue ?? "N/A",
-          fcp: (audits["first-contentful-paint"] as Record<string, unknown>)?.displayValue ?? "N/A",
-        };
-      };
-
-      return res.json({ url, mobile: extract(mobile as Record<string, unknown>), desktop: extract(desktop as Record<string, unknown>) });
-    } catch {
-      // fall through to demo response
-    }
+  if (typeof url !== "string" || !/^https?:\/\//.test(url)) {
+    return res.status(400).json({ error: "A valid http(s) URL is required" });
   }
 
-  // Demo response when no API key
-  return res.json({
-    url,
-    mobile: { score: 62, lcp: "3.8s", fid: "180ms", cls: "0.15", ttfb: "620ms", fcp: "2.1s" },
-    desktop: { score: 81, lcp: "1.9s", fid: "45ms", cls: "0.05", ttfb: "310ms", fcp: "1.1s" },
-    fixes: [
-      { issue: "Render-blocking resources", impact: "High", saving: "~1.2s", fix: "Defer non-critical JS and CSS using async/defer attributes." },
-      { issue: "Images not optimized", impact: "Medium", saving: "~800ms", fix: "Convert images to WebP format and add width/height attributes." },
-      { issue: "No browser caching", impact: "Medium", saving: "~400ms", fix: "Add Cache-Control headers with max-age >= 31536000 for static assets." },
-      { issue: "Large DOM size", impact: "Low", saving: "~200ms", fix: "Reduce DOM nodes below 1500. Consider lazy-loading off-screen sections." },
-    ],
-    note: "Live scores require a Google PageSpeed API key (GOOGLE_PAGESPEED_API_KEY env var).",
-  });
+  const result = await fetchPageSpeed(url);
+  if (!result) {
+    return res.json({
+      url,
+      mobile: null,
+      desktop: null,
+      source: "none",
+      note: "Live Core Web Vitals require a Google PageSpeed API key. Set GOOGLE_PAGESPEED_API_KEY on the server (the PSI API is free).",
+    });
+  }
+  return res.json({ url, ...result, source: "pagespeed" });
 });
 
 // POST /seo/backlinks

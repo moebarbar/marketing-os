@@ -27,7 +27,8 @@
       "Bash(npx -y pnpm@10.33.0 --filter @workspace/api-server run typecheck)",
       "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('control conversions:',d['control']['conversions'],'confidence:',d['confidence']\\)\")",
       "Bash(pkill -f \"dist/index.mjs\")",
-      "Bash(rm -f /tmp/tok2 /tmp/smoke*.log)"
+      "Bash(rm -f /tmp/tok2 /tmp/smoke*.log)",
+      "Bash(rm -f /tmp/smoke4.log)"
     ]
   }
 }

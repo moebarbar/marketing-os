@@ -38,6 +38,18 @@ router.get("/tracking.js", async (req: Request, res: Response) => {
   document.addEventListener("click",function(e){
     send("click",{clickX:Math.round(e.clientX/window.innerWidth*100),clickY:Math.round(e.clientY/window.innerHeight*100),target:(e.target&&e.target.tagName)||"unknown"});
   },{passive:true});
+  // Scroll depth — fire once per 25/50/75/100% threshold reached
+  var marks={},thresholds=[25,50,75,100];
+  document.addEventListener("scroll",function(){
+    var h=document.documentElement,d=Math.max(h.scrollHeight-h.clientHeight,1);
+    var pct=Math.min(100,Math.round((h.scrollTop||window.pageYOffset)/d*100));
+    for(var i=0;i<thresholds.length;i++){var t=thresholds[i];if(pct>=t&&!marks[t]){marks[t]=1;send("scroll",{depth:t});}}
+  },{passive:true});
+  // Form submissions — capture id/name/action, never field values
+  document.addEventListener("submit",function(e){
+    var f=e.target;if(!f||f.tagName!=="FORM")return;
+    send("form_submit",{formId:f.id||null,formName:f.getAttribute("name")||null,formAction:f.getAttribute("action")||location.pathname});
+  },{passive:true});
   window.ChiefMKT={track:function(event,props){send("custom",Object.assign({event:event},props||{}));}};
 })();
 `.trim();
@@ -54,7 +66,7 @@ router.post("/track", async (req: Request, res: Response) => {
   if (typeof trackingId !== "string" || typeof type !== "string") {
     return res.status(400).json({ error: "trackingId and type required" });
   }
-  if (!["pageview", "click", "custom", "identify"].includes(type)) {
+  if (!["pageview", "click", "custom", "identify", "scroll", "form_submit"].includes(type)) {
     return res.status(400).json({ error: "Unknown event type" });
   }
   const clamp = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : null);

@@ -97,6 +97,18 @@ const INTEGRATIONS = [
       { name: "BOX_ACCESS_TOKEN", key: "access_token", hint: "Developer Token from developer.box.com → My Apps → your app → Configuration" },
     ],
   },
+  {
+    id: "dataforseo",
+    name: "DataForSEO",
+    description: "Real search volume, keyword difficulty, CPC, and competitor domain metrics.",
+    icon: "📊",
+    category: "SEO Data",
+    docs: "https://docs.dataforseo.com/v3/auth/",
+    envVars: [
+      { name: "DATAFORSEO_LOGIN", key: "login", hint: "API login (email) from app.dataforseo.com → API Access" },
+      { name: "DATAFORSEO_PASSWORD", key: "password", hint: "API password from app.dataforseo.com → API Access" },
+    ],
+  },
 ];
 
 type Integration = (typeof INTEGRATIONS)[0];
