@@ -122,3 +122,42 @@ export async function domainMetrics(domain: string, projectId?: number): Promise
     estimatedTraffic: Math.round(item.metrics?.organic?.etv ?? 0),
   };
 }
+
+export interface Backlink {
+  sourceUrl: string;
+  targetUrl: string;
+  anchorText: string;
+  domainAuthority: number;
+  status: "active" | "lost";
+}
+
+// A domain's actual referring backlinks. Returns null when DataForSEO isn't
+// connected so callers can show an honest empty state instead of demo links.
+export async function backlinkProfile(domain: string, projectId?: number): Promise<{ backlinks: Backlink[]; totalActive: number } | null> {
+  const data = await post<DfsResult<{
+    items?: Array<{
+      url_from?: string;
+      url_to?: string;
+      anchor?: string;
+      domain_from_rank?: number;
+      is_lost?: boolean;
+    }>;
+  }>>(
+    "/backlinks/backlinks/live",
+    [{ target: domain, limit: 50, mode: "as_is", order_by: ["domain_from_rank,desc"] }],
+    projectId,
+  );
+
+  const items = data?.tasks?.[0]?.result?.[0]?.items;
+  if (!items) return null;
+
+  const backlinks: Backlink[] = items.map((b) => ({
+    sourceUrl: b.url_from ?? "",
+    targetUrl: b.url_to ?? `https://${domain}`,
+    anchorText: b.anchor || domain,
+    domainAuthority: Math.round(b.domain_from_rank ?? 0),
+    status: b.is_lost ? "lost" : "active",
+  }));
+
+  return { backlinks, totalActive: backlinks.filter((b) => b.status === "active").length };
+}

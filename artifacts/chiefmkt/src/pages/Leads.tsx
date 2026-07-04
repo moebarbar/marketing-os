@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PageLoader } from "@/components/ui/loading-states";
 import { Users, Search, Download, Filter, RefreshCw, Sheet, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { downloadCsv } from "@/lib/csv";
 import { syncLeadToHubSpot, exportToSheets } from "@/lib/integrations-api";
 
 
@@ -140,12 +141,34 @@ export default function Leads() {
   const PROJECT_ID = useProjectId();
   const [page, setPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const { data, isLoading } = useListLeads({ projectId: PROJECT_ID, page, limit: 10 });
   const { toast } = useToast();
   const [syncingLeadId, setSyncingLeadId] = useState<number | null>(null);
   const [exportingSheets, setExportingSheets] = useState(false);
 
   if (isLoading) return <PageLoader />;
+
+  const q = search.trim().toLowerCase();
+  const visibleLeads = (data?.leads ?? []).filter((l) => {
+    const matchesStatus = statusFilter === "all" || l.status === statusFilter;
+    const matchesSearch = !q ||
+      (l.name ?? "").toLowerCase().includes(q) ||
+      (l.email ?? "").toLowerCase().includes(q) ||
+      (l.company ?? "").toLowerCase().includes(q);
+    return matchesStatus && matchesSearch;
+  });
+
+  const handleExportCsv = () => {
+    const rows = (data?.leads ?? []).map((l) => ({
+      Name: l.name ?? "", Email: l.email, Company: l.company ?? "",
+      Source: l.source, Score: l.score, Status: l.status,
+      Created: new Date(l.createdAt).toLocaleDateString(),
+    }));
+    if (!rows.length) { toast({ title: "Nothing to export", description: "No leads yet." }); return; }
+    downloadCsv(`leads-${Date.now()}.csv`, rows);
+  };
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -207,9 +230,21 @@ export default function Leads() {
           <p className="text-slate-400 mt-1">Track and qualify your incoming leads.</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
-            <Filter className="w-4 h-4" /> Filter
-          </button>
+          <div className="relative flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-xl px-3">
+            <Filter className="w-4 h-4 text-slate-400" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-transparent text-white text-sm py-2 pr-6 focus:outline-none cursor-pointer"
+            >
+              <option value="all">All statuses</option>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="qualified">Qualified</option>
+              <option value="converted">Converted</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
           <button
             onClick={handleExportSheets}
             disabled={exportingSheets}
@@ -218,7 +253,10 @@ export default function Leads() {
             {exportingSheets ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sheet className="w-4 h-4" />}
             Export to Sheets
           </button>
-          <button className="flex items-center gap-2 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+          <button
+            onClick={handleExportCsv}
+            className="flex items-center gap-2 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          >
             <Download className="w-4 h-4" /> Export CSV
           </button>
           <button
@@ -236,12 +274,14 @@ export default function Leads() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search leads..."
               className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-primary"
             />
           </div>
           <div className="text-sm text-slate-400">
-            Showing <strong className="text-white">{data?.leads.length}</strong> of <strong className="text-white">{data?.total}</strong>
+            Showing <strong className="text-white">{visibleLeads.length}</strong> of <strong className="text-white">{data?.total}</strong>
           </div>
         </div>
 
@@ -259,7 +299,7 @@ export default function Leads() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50">
-              {data?.leads.length === 0 && (
+              {visibleLeads.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                     No leads yet.{" "}
@@ -269,7 +309,7 @@ export default function Leads() {
                   </td>
                 </tr>
               )}
-              {data?.leads.map((lead) => (
+              {visibleLeads.map((lead) => (
                 <tr key={lead.id} className="hover:bg-slate-800/30 transition-colors group cursor-pointer">
                   <td className="px-6 py-4">
                     <div className="font-medium text-slate-200">{lead.name || 'Unknown'}</div>

@@ -4,6 +4,7 @@ import { seoReportsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { fetchPage, analyzeHtml, aiRecommendations, fetchPageSpeed } from "../lib/seo-audit.js";
 import { meterAiUsage } from "../middleware/plan.js";
+import { backlinkProfile } from "../integrations/dataforseo.js";
 
 const router: IRouter = Router();
 
@@ -199,16 +200,11 @@ router.post("/seo/pagespeed", async (req, res) => {
 // POST /seo/backlinks
 router.post("/seo/backlinks", async (req, res) => {
   const { domain } = req.body;
-  if (!domain) return res.status(400).json({ error: "domain is required" });
+  if (typeof domain !== "string" || !domain.trim()) return res.status(400).json({ error: "domain is required" });
+  const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
-  // Demo backlink data — replace with DataForSEO/Ahrefs API when key is available
-  const backlinks = [
-    { sourceUrl: `https://blog.example.com/top-tools`, targetUrl: `https://${domain}`, anchorText: domain, domainAuthority: 72, status: "active" },
-    { sourceUrl: `https://techreview.io/marketing-tools`, targetUrl: `https://${domain}/features`, anchorText: "marketing platform", domainAuthority: 58, status: "active" },
-    { sourceUrl: `https://saas-directory.com/${domain}`, targetUrl: `https://${domain}`, anchorText: "visit site", domainAuthority: 45, status: "active" },
-    { sourceUrl: `https://old-partner.net/blog/tools`, targetUrl: `https://${domain}`, anchorText: "check this out", domainAuthority: 31, status: "lost" },
-    { sourceUrl: `https://producthunt.com/products/${domain}`, targetUrl: `https://${domain}`, anchorText: domain, domainAuthority: 90, status: "active" },
-  ];
+  // Real backlinks via DataForSEO when connected; honest empty state otherwise.
+  const profile = await backlinkProfile(cleanDomain, req.projectId!);
 
   const suggestions = [
     "Submit to Product Hunt and Indie Hackers for high-DA backlinks",
@@ -218,7 +214,18 @@ router.post("/seo/backlinks", async (req, res) => {
     "Find broken links on competitor-adjacent sites and pitch your content as a replacement",
   ];
 
-  return res.json({ domain, backlinks, totalActive: backlinks.filter(b => b.status === "active").length, suggestions, note: "Connect DataForSEO for real backlink data." });
+  if (!profile) {
+    return res.json({
+      domain: cleanDomain,
+      backlinks: [],
+      totalActive: 0,
+      suggestions,
+      source: "none",
+      note: "Connect a DataForSEO account on the Integrations page to see your real backlink profile. No sample data is shown to avoid misleading numbers.",
+    });
+  }
+
+  return res.json({ domain: cleanDomain, backlinks: profile.backlinks, totalActive: profile.totalActive, suggestions, source: "dataforseo" });
 });
 
 export default router;

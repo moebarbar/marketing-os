@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useGetDashboardOverview, useGetDashboardVisitors, useGetAiRecommendations } from "@workspace/api-client-react";
 import { useProjectId } from "@/lib/project";
 import { PageLoader, ErrorState } from "@/components/ui/loading-states";
@@ -5,21 +6,27 @@ import { ArrowUpRight, ArrowDownRight, Users, Eye, MousePointerClick, Zap, Check
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
 
+const PERIODS = [
+  { value: "30d", label: "Last 30 Days" },
+  { value: "7d", label: "Last 7 Days" },
+  { value: "90d", label: "Last 90 Days" },
+] as const;
 
 export default function Dashboard() {
   const PROJECT_ID = useProjectId();
+  const [period, setPeriod] = useState<"7d" | "30d" | "90d">("30d");
   const { data: overview, isLoading: overviewLoading, error: overviewError } = useGetDashboardOverview();
-  const { data: visitors, isLoading: visitorsLoading } = useGetDashboardVisitors({ period: '30d' });
+  const { data: visitors, isLoading: visitorsLoading } = useGetDashboardVisitors({ period });
   const { data: recommendations, isLoading: recsLoading } = useGetAiRecommendations({ projectId: PROJECT_ID });
 
-  if (overviewLoading || visitorsLoading || recsLoading) return <PageLoader />;
+  if (overviewLoading || recsLoading) return <PageLoader />;
   if (overviewError || !overview) return <ErrorState message="Failed to load dashboard metrics" />;
 
   const metrics = [
     { label: "Total Visitors", value: (overview?.totalVisitors || 0).toLocaleString(), change: overview?.visitorsChange || 0, icon: Users },
     { label: "Page Views", value: (overview?.pageViews || 0).toLocaleString(), change: overview?.pageViewsChange || 0, icon: Eye },
     { label: "Leads", value: (overview?.leads || 0).toLocaleString(), change: overview?.leadsChange || 0, icon: Zap },
-    { label: "Conversion Rate", value: `${((overview?.conversionRate || 0) * 100).toFixed(1)}%`, change: overview?.conversionRateChange || 0, icon: MousePointerClick },
+    { label: "Conversion Rate", value: `${(overview?.conversionRate || 0).toFixed(1)}%`, change: overview?.conversionRateChange || 0, icon: MousePointerClick },
   ];
 
   return (
@@ -62,10 +69,12 @@ export default function Dashboard() {
         <div className="lg:col-span-2 glass-panel rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-display font-bold text-white">Visitor Traffic</h2>
-            <select className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-primary">
-              <option>Last 30 Days</option>
-              <option>Last 7 Days</option>
-              <option>Last 90 Days</option>
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as "7d" | "30d" | "90d")}
+              className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-primary"
+            >
+              {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
           </div>
           <div className="h-[300px] w-full">

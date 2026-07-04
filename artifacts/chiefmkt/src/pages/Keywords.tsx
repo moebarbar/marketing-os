@@ -6,6 +6,7 @@ import { Search, TrendingUp, ArrowRight, Bookmark, Download, Sheet, RefreshCw } 
 import { formatNumber, formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { exportToSheets } from "@/lib/integrations-api";
+import { downloadCsv } from "@/lib/csv";
 
 
 export default function Keywords() {
@@ -83,7 +84,14 @@ export default function Keywords() {
             {exporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sheet className="w-4 h-4" />}
             Export to Sheets
           </button>
-          <button className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors">
+          <button
+            onClick={() => {
+              const rows = results?.keywords ?? [];
+              if (!rows.length) { toast({ title: "Nothing to export", description: "Run a search first." }); return; }
+              downloadCsv(`keywords-${Date.now()}.csv`, rows as unknown as Record<string, unknown>[]);
+            }}
+            className="flex items-center gap-2 text-sm bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg transition-colors"
+          >
             <Download className="w-4 h-4" /> Export CSV
           </button>
         </div>
