@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
+import { useProjectId } from "@/lib/project";
 import { SplitSquareHorizontal, Plus, Trophy, Activity, CheckCircle2, PauseCircle, X, Play, Pause, Code, RefreshCw } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 interface Variant { url: string; visitors: number; conversions: number; conversionRate: number; }
 interface AbTest {
@@ -11,6 +11,7 @@ interface AbTest {
 }
 
 function CreateTestModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const PROJECT_ID = useProjectId();
   const [name, setName] = useState("");
   const [goal, setGoal] = useState("");
   const [controlUrl, setControlUrl] = useState("");
@@ -103,6 +104,7 @@ function EmbedModal({ test, onClose }: { test: AbTest; onClose: () => void }) {
 }
 
 export default function AbTesting() {
+  const PROJECT_ID = useProjectId();
   const [tests, setTests] = useState<AbTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);

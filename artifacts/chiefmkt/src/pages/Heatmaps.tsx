@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useProjectId } from "@/lib/project";
 import { Flame, RefreshCw, MousePointer, ExternalLink } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 interface Click { x: number; y: number; }
 interface HeatmapData { url: string; clicks: Click[]; }
@@ -73,6 +73,7 @@ function HeatmapCanvas({ clicks, width, height }: { clicks: Click[]; width: numb
 }
 
 export default function Heatmaps() {
+  const PROJECT_ID = useProjectId();
   const [pages, setPages] = useState<PageRow[]>([]);
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [heatData, setHeatData] = useState<HeatmapData | null>(null);

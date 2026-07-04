@@ -1,4 +1,5 @@
 import { useChat } from "@ai-sdk/react";
+import { useProjectId } from "@/lib/project";
 import { useMemo } from "react";
 import { createCmoChat } from "@/lib/agents";
 import { useAgentSession } from "@/hooks/useAgentSession";
@@ -39,7 +40,8 @@ function CmoAgentChat({ session, newSession }: { session: Session; newSession: (
 }
 
 export default function CmoAgentPage() {
-  const { session, loading, error: sessionError, newSession } = useAgentSession("chiefmkt-cmo", 1);
+  const PROJECT_ID = useProjectId();
+  const { session, loading, error: sessionError, newSession } = useAgentSession("chiefmkt-cmo", PROJECT_ID);
 
   if (loading) {
     return (

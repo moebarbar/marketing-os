@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useAnalyzeSeo, useListSeoReports } from "@workspace/api-client-react";
 import { PageLoader, ErrorState } from "@/components/ui/loading-states";
 import { Search, AlertTriangle, AlertCircle, Info, RefreshCw, HardDrive, Box, Zap } from "lucide-react";
@@ -6,9 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { saveSeoReportToDrive, uploadToBox } from "@/lib/integrations-api";
 
-const PROJECT_ID = 1;
 
 export default function SeoAnalyzer() {
+  const PROJECT_ID = useProjectId();
   const [url, setUrl] = useState("");
   const { mutate: analyze, isPending, data: analysis, error: analyzeError } = useAnalyzeSeo();
   const { data: history, isLoading: historyLoading } = useListSeoReports({ projectId: PROJECT_ID });

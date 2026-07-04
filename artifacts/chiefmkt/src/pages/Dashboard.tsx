@@ -1,12 +1,13 @@
 import { useGetDashboardOverview, useGetDashboardVisitors, useGetAiRecommendations } from "@workspace/api-client-react";
+import { useProjectId } from "@/lib/project";
 import { PageLoader, ErrorState } from "@/components/ui/loading-states";
 import { ArrowUpRight, ArrowDownRight, Users, Eye, MousePointerClick, Zap, CheckCircle2, Circle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from "framer-motion";
 
-const PROJECT_ID = 1; // Defaulting as specified
 
 export default function Dashboard() {
+  const PROJECT_ID = useProjectId();
   const { data: overview, isLoading: overviewLoading, error: overviewError } = useGetDashboardOverview();
   const { data: visitors, isLoading: visitorsLoading } = useGetDashboardVisitors({ period: '30d' });
   const { data: recommendations, isLoading: recsLoading } = useGetAiRecommendations({ projectId: PROJECT_ID });

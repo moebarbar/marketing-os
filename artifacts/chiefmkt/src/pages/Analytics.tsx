@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
+import { useProjectId } from "@/lib/project";
 import { BarChart3, RefreshCw, Users, Eye, TrendingUp, Clock, MousePointer, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 interface Overview {
   visitors: number;
@@ -45,6 +45,7 @@ function StatCard({ label, value, change, icon: Icon, color }: { label: string; 
 }
 
 export default function Analytics() {
+  const PROJECT_ID = useProjectId();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [pages, setPages] = useState<TopPage[]>([]);
   const [loading, setLoading] = useState(true);

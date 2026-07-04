@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useGenerateContent, useGetContentHistory, ContentGenerateRequestType, ContentGenerateRequestTone } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
 import { Sparkles, Copy, Check, Clock, History, BookOpen, Box, RefreshCw } from "lucide-react";
@@ -6,9 +7,9 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { pushContentToNotion, uploadToBox } from "@/lib/integrations-api";
 
-const PROJECT_ID = 1;
 
 export default function ContentGenerator() {
+  const PROJECT_ID = useProjectId();
   const [type, setType] = useState<ContentGenerateRequestType>('blog_post');
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState<ContentGenerateRequestTone>('professional');

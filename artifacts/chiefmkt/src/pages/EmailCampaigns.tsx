@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useListEmailCampaigns } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
 import { Mail, Plus, Send, Clock, Pause, LayoutTemplate, RefreshCw, X, Users, ChevronRight, CheckCircle2 } from "lucide-react";
@@ -6,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { sendCampaignViaSendGrid, sendCampaignViaResend } from "@/lib/integrations-api";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 interface SendDialogState {
   campaignId: number;
@@ -21,6 +21,7 @@ function CreateCampaignWizard({ onClose, onCreated, sendProvider }: {
   onCreated: () => void;
   sendProvider: 'sendgrid' | 'resend';
 }) {
+  const PROJECT_ID = useProjectId();
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -251,6 +252,7 @@ function CreateCampaignWizard({ onClose, onCreated, sendProvider }: {
 }
 
 export default function EmailCampaigns() {
+  const PROJECT_ID = useProjectId();
   const { data: campaigns, isLoading, refetch } = useListEmailCampaigns({ projectId: PROJECT_ID });
   const { toast } = useToast();
   const [sendingId, setSendingId] = useState<number | null>(null);

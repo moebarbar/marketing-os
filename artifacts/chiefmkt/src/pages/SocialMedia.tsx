@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
+import { useProjectId } from "@/lib/project";
 import { Share2, Plus, Twitter, Linkedin, Facebook, Instagram, Heart, Repeat2, Calendar, X, Send, Trash2, RefreshCw } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 const PLATFORM_META: Record<string, { icon: React.ElementType; color: string; label: string }> = {
   twitter: { icon: Twitter, color: "text-sky-400", label: "X (Twitter)" },
@@ -17,6 +17,7 @@ interface Post {
 }
 
 function NewPostModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const PROJECT_ID = useProjectId();
   const [content, setContent] = useState("");
   const [platforms, setPlatforms] = useState<string[]>(["twitter"]);
   const [scheduledAt, setScheduledAt] = useState("");
@@ -107,6 +108,7 @@ function NewPostModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 }
 
 export default function SocialMedia() {
+  const PROJECT_ID = useProjectId();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);

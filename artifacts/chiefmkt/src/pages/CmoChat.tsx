@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo } from "react";
+import { useProjectId } from "@/lib/project";
 import { useChat } from "@ai-sdk/react";
 import { createCmoChat } from "@/lib/agents";
 import { useAgentSession } from "@/hooks/useAgentSession";
@@ -294,8 +295,9 @@ function ChatInterface({
 }
 
 export default function CmoChatPage() {
+  const PROJECT_ID = useProjectId();
   const { session, loading, error: sessionError, newSession } =
-    useAgentSession("chiefmkt-cmo", 1);
+    useAgentSession("chiefmkt-cmo", PROJECT_ID);
 
   if (loading) {
     return (

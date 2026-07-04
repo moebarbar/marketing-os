@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
+import { useProjectId } from "@/lib/project";
 import { Filter, Plus, ArrowRight, TrendingDown, X, Trash2, RefreshCw } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 interface FunnelStep { id: number; name: string; url: string; order: number; }
 interface Funnel { id: number; name: string; steps: FunnelStep[]; }
@@ -10,6 +10,7 @@ interface StepData { stepId: number; name: string; url: string; visitors: number
 interface FunnelData { funnelId: number; steps: StepData[]; overallConversionRate: number; totalEntries: number; hasRealData: boolean; }
 
 function CreateFunnelModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const PROJECT_ID = useProjectId();
   const [name, setName] = useState("");
   const [steps, setSteps] = useState([{ name: "", url: "" }]);
   const [saving, setSaving] = useState(false);
@@ -80,6 +81,7 @@ function CreateFunnelModal({ onClose, onCreated }: { onClose: () => void; onCrea
 }
 
 export default function Funnels() {
+  const PROJECT_ID = useProjectId();
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [activeFunnelId, setActiveFunnelId] = useState<number | null>(null);
   const [funnelData, setFunnelData] = useState<FunnelData | null>(null);

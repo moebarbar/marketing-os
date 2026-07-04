@@ -1,12 +1,13 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useListCompetitors, useAddCompetitor } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
 import { LineChart, Plus, Globe, Link as LinkIcon, Key, TrendingUp, Users } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 
-const PROJECT_ID = 1;
 
 export default function Competitors() {
+  const PROJECT_ID = useProjectId();
   const [url, setUrl] = useState("");
   const { data: competitors, isLoading } = useListCompetitors({ projectId: PROJECT_ID });
   const { mutate: add, isPending } = useAddCompetitor();

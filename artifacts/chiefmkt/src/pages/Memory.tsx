@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Brain, Pencil, Trash2, Plus, Check, X, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 const CATEGORY_COLORS: Record<string, string> = {
   BUSINESS_CORE: "text-blue-400 bg-blue-500/10 border-blue-500/20",
@@ -134,6 +134,7 @@ function AddModal({ onClose, onSave }: { onClose: () => void; onSave: (key: stri
 }
 
 export default function MemoryPage() {
+  const PROJECT_ID = useProjectId();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [editEntry, setEditEntry] = useState<MemoryEntry | null>(null);

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
+import { useProjectId } from "@/lib/project";
 import { useGetChatWidgetSettings, useUpdateChatWidgetSettings, useListChatConversations } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
 import { MessageSquare, Save, Power, Settings2, UserCircle2 } from "lucide-react";
 
-const PROJECT_ID = 1;
 
 export default function ChatWidget() {
+  const PROJECT_ID = useProjectId();
   const { data: settings, isLoading: settingsLoading } = useGetChatWidgetSettings({ projectId: PROJECT_ID });
   const { mutate: update, isPending } = useUpdateChatWidgetSettings();
   const { data: conversations, isLoading: convsLoading } = useListChatConversations({ projectId: PROJECT_ID });

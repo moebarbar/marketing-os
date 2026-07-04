@@ -4,6 +4,7 @@ import StudioTopBar from "@/components/studio/StudioTopBar";
 import AIChatPanel from "@/components/studio/AIChatPanel";
 import ProjectPanel from "@/components/studio/ProjectPanel";
 import DeployPanel from "@/components/studio/DeployPanel";
+import { useProjectId } from "@/lib/project";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -20,6 +21,7 @@ interface StudioProject {
 }
 
 export default function Studio() {
+  const PROJECT_ID = useProjectId();
   const [activePanel, setActivePanel] = useState<StudioPanel | null>("projects");
   const [currentProject, setCurrentProject] = useState<StudioProject | null>(null);
   const [projectType, setProjectType] = useState<"web" | "email">("web");
@@ -52,7 +54,7 @@ export default function Studio() {
       const r = await fetch(`${BASE}/api/studio/projects/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, projectType: type, projectId: 1 }),
+        body: JSON.stringify({ name, projectType: type, projectId: PROJECT_ID }),
       });
       const { project } = await r.json();
       setCurrentProject(project);
@@ -87,7 +89,7 @@ export default function Studio() {
         body: JSON.stringify({
           id: currentProject.id,
           projectData: editor.getProjectData(),
-          projectId: 1,
+          projectId: PROJECT_ID,
         }),
       });
       setSaved(true);

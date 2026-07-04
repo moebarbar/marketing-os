@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useListLeads, useCreateLead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageLoader } from "@/components/ui/loading-states";
@@ -6,9 +7,9 @@ import { Users, Search, Download, Filter, RefreshCw, Sheet, Plus, X } from "luci
 import { useToast } from "@/hooks/use-toast";
 import { syncLeadToHubSpot, exportToSheets } from "@/lib/integrations-api";
 
-const PROJECT_ID = 1;
 
 function AddLeadModal({ onClose }: { onClose: () => void }) {
+  const PROJECT_ID = useProjectId();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { mutate: createLead, isPending } = useCreateLead({
@@ -136,6 +137,7 @@ function AddLeadModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Leads() {
+  const PROJECT_ID = useProjectId();
   const [page, setPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const { data, isLoading } = useListLeads({ projectId: PROJECT_ID, page, limit: 10 });

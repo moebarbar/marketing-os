@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { Check, Zap, Star, Building2, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
-const PROJECT_ID = 1;
 
 const PLANS = [
   {
@@ -69,6 +69,7 @@ const PLANS = [
 ];
 
 export default function Pricing() {
+  const PROJECT_ID = useProjectId();
   const [loading, setLoading] = useState<string | null>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();

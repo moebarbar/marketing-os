@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useResearchKeywords, useGetSavedKeywords, useSaveKeyword, useDeleteKeyword } from "@workspace/api-client-react";
 import { PageLoader } from "@/components/ui/loading-states";
 import { Search, TrendingUp, ArrowRight, Bookmark, Download, Sheet, RefreshCw } from "lucide-react";
@@ -6,9 +7,9 @@ import { formatNumber, formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { exportToSheets } from "@/lib/integrations-api";
 
-const PROJECT_ID = 1;
 
 export default function Keywords() {
+  const PROJECT_ID = useProjectId();
   const [topic, setTopic] = useState("");
   const { mutate: research, isPending, data: results } = useResearchKeywords();
   const { data: saved, isLoading: savedLoading, refetch: refetchSaved } = useGetSavedKeywords({ projectId: PROJECT_ID });

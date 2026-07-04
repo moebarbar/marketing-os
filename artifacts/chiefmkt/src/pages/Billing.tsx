@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { CreditCard, Calendar, CheckCircle2, AlertCircle, ExternalLink, ArrowUpRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSearch } from "wouter";
 
-const PROJECT_ID = 1;
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 
 interface Subscription {
@@ -22,6 +22,7 @@ const PLAN_META: Record<string, { label: string; color: string; price: string }>
 };
 
 export default function Billing() {
+  const PROJECT_ID = useProjectId();
   const [sub, setSub] = useState<Subscription | null | undefined>(undefined);
   const [portalLoading, setPortalLoading] = useState(false);
   const { toast } = useToast();

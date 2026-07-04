@@ -32,7 +32,9 @@
       "Bash(export DATABASE_URL=\"postgresql://postgres:deploy@localhost:55440/chiefmkt\")",
       "Bash(chmod +x /Users/moe/Desktop/coding1/marketing-os/railway-start.sh)",
       "Bash(open -a Docker)",
-      "Bash(break)"
+      "Bash(break)",
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)"
     ]
   }
 }

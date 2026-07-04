@@ -1,10 +1,10 @@
 import { useState } from "react";
+import { useProjectId } from "@/lib/project";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, Users, FileText, Search, Mail, Share2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-const PROJECT_ID = 1;
 
 const TYPE_META: Record<string, { icon: typeof Users; color: string; bg: string }> = {
   lead:    { icon: Users,    color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/20" },
@@ -52,6 +52,7 @@ function groupByDate(items: ActivityItem[]) {
 }
 
 export default function ActivityPage() {
+  const PROJECT_ID = useProjectId();
   const [days, setDays] = useState(30);
 
   const { data: items = [], isLoading } = useQuery<ActivityItem[]>({
