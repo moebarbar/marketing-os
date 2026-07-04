@@ -30,7 +30,9 @@
       "Bash(rm -f /tmp/tok2 /tmp/smoke*.log)",
       "Bash(rm -f /tmp/smoke4.log)",
       "Bash(export DATABASE_URL=\"postgresql://postgres:deploy@localhost:55440/chiefmkt\")",
-      "Bash(chmod +x /Users/moe/Desktop/coding1/marketing-os/railway-start.sh)"
+      "Bash(chmod +x /Users/moe/Desktop/coding1/marketing-os/railway-start.sh)",
+      "Bash(open -a Docker)",
+      "Bash(break)"
     ]
   }
 }

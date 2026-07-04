@@ -59,29 +59,30 @@ app.use("/api", (_req: Request, res: Response) => {
   res.status(404).json({ error: "Not found" });
 });
 
-// Central error handler: log with the request logger, never leak internals
+// Serve the built frontend whenever it exists (single-service deploy).
+// Not gated on NODE_ENV — the API server always hosts the SPA in this setup;
+// in local dev the frontend runs on Vite's own server and this dir is absent.
+const staticDir = path.join(process.cwd(), "artifacts/chiefmkt/dist/public");
+const indexHtml = path.join(staticDir, "index.html");
+const hasFrontend = existsSync(indexHtml);
+if (hasFrontend) {
+  app.use(express.static(staticDir));
+}
+// SPA fallback (Express 5 no longer accepts a bare "*" route path)
+app.use((req, res, next) => {
+  if (req.method !== "GET" || req.path.startsWith("/api")) return next();
+  if (hasFrontend) {
+    res.sendFile(indexHtml);
+  } else {
+    res.status(503).send("Frontend not built. Run: pnpm --filter @workspace/chiefmkt build");
+  }
+});
+
+// Central error handler MUST be last. Log with the request logger, never leak internals.
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   (req as Request & { log?: typeof logger }).log?.error({ err }, "Unhandled route error");
   if (res.headersSent) return;
   res.status(500).json({ error: "Internal server error" });
 });
-
-// Serve built frontend in production
-const staticDir = path.join(process.cwd(), "artifacts/chiefmkt/dist/public");
-const indexHtml = path.join(staticDir, "index.html");
-if (process.env.NODE_ENV === "production") {
-  if (existsSync(staticDir)) {
-    app.use(express.static(staticDir));
-  }
-  // SPA fallback (Express 5 no longer accepts a bare "*" route path)
-  app.use((req, res, next) => {
-    if (req.method !== "GET" || req.path.startsWith("/api")) return next();
-    if (existsSync(indexHtml)) {
-      res.sendFile(indexHtml);
-    } else {
-      res.status(503).send("Frontend not built. Run: pnpm --filter @workspace/chiefmkt build");
-    }
-  });
-}
 
 export default app;
