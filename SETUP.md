@@ -81,16 +81,20 @@ Notifications (optional):
 
 ---
 
-## F · The AI CMO chat (`/chat`, `/agent/*`)
+## F · The AI CMO chat (`/chat`, `/agent/*`) — now in-house ✅
 
-Currently these run on **21st.dev** and return **503** until configured:
+**Done.** The 4 agents (CMO / SEO / Content / Leads) now run **in-house** on this
+server via `lib/agent.ts` — a real Anthropic tool loop over your own database.
+The 21st.dev dependency is gone, and your `DATABASE_URL` no longer leaves the box.
 
-| Variable | Where to get it | Notes |
-|---|---|---|
-| `API_KEY_21ST` | **21st.dev** account | Also requires deploying the agents: `cd artifacts/agents && npx @21st-sdk/cli login && npx @21st-sdk/cli deploy` |
-| `GOOGLE_SEARCH_CONSOLE_*` | Google Cloud (only if you want the SEO agent's Search Console tool) | Optional |
+**No extra key needed** — the AI CMO chat works with the same `ANTHROPIC_API_KEY`
+from §B. Set that and every agent page is live. Without it, the chat replies with
+a friendly "set ANTHROPIC_API_KEY" message instead of erroring.
 
-**Recommendation:** rather than depend on 21st.dev (it also ships your `DATABASE_URL` into their sandbox), have me **bring the 4 agents in-house** onto the existing `lib/ai.ts` service — then the AI CMO chat works with just `ANTHROPIC_API_KEY`, no third party. This is a build task (P0 in the audit), not a key.
+The agents can read your real analytics/leads/SEO/memory and take actions
+(generate + save content, create social drafts, remember business facts, run a
+live SEO audit, pull keyword ideas). `API_KEY_21ST` and the `artifacts/agents/`
+package are no longer used.
 
 ---
 

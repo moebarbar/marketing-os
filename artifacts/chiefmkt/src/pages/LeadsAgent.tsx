@@ -1,10 +1,5 @@
-import { useChat } from "@ai-sdk/react";
-import { useProjectId } from "@/lib/project";
-import { useMemo } from "react";
-import { createLeadsChat } from "@/lib/agents";
-import { useAgentSession } from "@/hooks/useAgentSession";
 import { AgentChatShell } from "@/components/AgentChatShell";
-import { Bot } from "lucide-react";
+import { useInhouseAgent } from "@/hooks/useInhouseAgent";
 
 const QUICK_PROMPTS = [
   { label: "🔥 Who to contact today", prompt: "Read my actual leads and tell me exactly who I should contact today. Rank them hot/warm/cold. For the top 3, write the exact message I should send." },
@@ -17,54 +12,20 @@ const QUICK_PROMPTS = [
   { label: "💡 Lead scoring model", prompt: "Build me a simple lead scoring model based on my ICP. What criteria should I score? What weights? Give me a spreadsheet-ready formula." },
 ];
 
-interface Session { sandboxId: string; threadId: string; }
-
-function LeadsAgentChat({ session, newSession }: { session: Session; newSession: () => void }) {
-  const chat = useMemo(() => createLeadsChat(session.sandboxId, session.threadId), [session.sandboxId, session.threadId]);
-  const { messages, input, handleSubmit, status, stop, setInput } = useChat({ chat: chat as any });
-
+export default function LeadsAgentPage() {
+  const agent = useInhouseAgent("chiefmkt-leads");
   return (
     <AgentChatShell
       title="Leads Agent"
       subtitle="Reads your real leads and writes personalized outreach"
       quickPrompts={QUICK_PROMPTS}
-      messages={messages}
-      input={input}
-      setInput={setInput}
-      handleSubmit={handleSubmit}
-      status={status}
-      stop={stop}
-      newSession={newSession}
+      messages={agent.messages}
+      input={agent.input}
+      setInput={agent.setInput}
+      handleSubmit={agent.handleSubmit}
+      status={agent.status}
+      stop={agent.stop}
+      newSession={agent.newSession}
     />
   );
-}
-
-export default function LeadsAgentPage() {
-  const PROJECT_ID = useProjectId();
-  const { session, loading, error: sessionError, newSession } = useAgentSession("chiefmkt-leads", PROJECT_ID);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center space-y-2">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm">Starting Leads Agent...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (sessionError || !session) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-3 max-w-sm">
-          <Bot className="w-10 h-10 text-muted-foreground mx-auto" />
-          <p className="text-destructive text-sm">{sessionError}</p>
-          <p className="text-muted-foreground text-xs">Add <code className="text-primary">API_KEY_21ST</code> to your .env to activate agents.</p>
-        </div>
-      </div>
-    );
-  }
-
-  return <LeadsAgentChat session={session} newSession={newSession} />;
 }

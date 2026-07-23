@@ -3,6 +3,8 @@ import { AgentClient } from "@21st-sdk/node";
 import { db } from "@workspace/db";
 import { agentSessions, agentMemory } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { runAgent, agentAvailable, AGENT_PERSONAS, type AgentMessage } from "../lib/agent.js";
+import { meterAiUsage } from "../middleware/plan.js";
 
 const router: IRouter = Router();
 
@@ -12,6 +14,26 @@ const VALID_AGENTS = [
   "chiefmkt-content",
   "chiefmkt-leads",
 ];
+
+// ── In-house AI CMO chat (no 21st.dev; runs on this server via Anthropic) ────
+// GET availability so the UI can show a helpful message instead of failing.
+router.get("/agent/chat/available", (_req: Request, res: Response) => {
+  res.json({ available: agentAvailable() });
+});
+
+router.post("/agent/chat", meterAiUsage(), async (req: Request, res: Response) => {
+  const { agentSlug, messages } = req.body as { agentSlug?: string; messages?: AgentMessage[] };
+  const slug = agentSlug && agentSlug in AGENT_PERSONAS ? agentSlug : "chiefmkt-cmo";
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "messages array is required" });
+  }
+  const history: AgentMessage[] = messages
+    .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .map((m) => ({ role: m.role, content: m.content.slice(0, 8000) }));
+
+  const result = await runAgent(slug, history, req.projectId!);
+  return res.json(result);
+});
 
 function getClient() {
   if (!process.env.API_KEY_21ST) return null;

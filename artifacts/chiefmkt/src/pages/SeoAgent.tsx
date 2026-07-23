@@ -1,10 +1,5 @@
-import { useChat } from "@ai-sdk/react";
-import { useProjectId } from "@/lib/project";
-import { useMemo } from "react";
-import { createSeoChat } from "@/lib/agents";
-import { useAgentSession } from "@/hooks/useAgentSession";
 import { AgentChatShell } from "@/components/AgentChatShell";
-import { Bot } from "lucide-react";
+import { useInhouseAgent } from "@/hooks/useInhouseAgent";
 
 const QUICK_PROMPTS = [
   { label: "🔍 Full SEO audit", prompt: "Read my SEO reports and give me a complete prioritized audit. Rank every issue by impact × effort and include the exact fix for each." },
@@ -17,54 +12,20 @@ const QUICK_PROMPTS = [
   { label: "📊 Traffic forecast", prompt: "If I fix the top 3 SEO issues in my reports, what traffic increase should I expect? Give me a realistic estimate with reasoning." },
 ];
 
-interface Session { sandboxId: string; threadId: string; }
-
-function SeoAgentChat({ session, newSession }: { session: Session; newSession: () => void }) {
-  const chat = useMemo(() => createSeoChat(session.sandboxId, session.threadId), [session.sandboxId, session.threadId]);
-  const { messages, input, handleSubmit, status, stop, setInput } = useChat({ chat: chat as any });
-
+export default function SeoAgentPage() {
+  const agent = useInhouseAgent("chiefmkt-seo");
   return (
     <AgentChatShell
       title="SEO Agent"
       subtitle="Technical SEO specialist with access to your audit reports"
       quickPrompts={QUICK_PROMPTS}
-      messages={messages}
-      input={input}
-      setInput={setInput}
-      handleSubmit={handleSubmit}
-      status={status}
-      stop={stop}
-      newSession={newSession}
+      messages={agent.messages}
+      input={agent.input}
+      setInput={agent.setInput}
+      handleSubmit={agent.handleSubmit}
+      status={agent.status}
+      stop={agent.stop}
+      newSession={agent.newSession}
     />
   );
-}
-
-export default function SeoAgentPage() {
-  const PROJECT_ID = useProjectId();
-  const { session, loading, error: sessionError, newSession } = useAgentSession("chiefmkt-seo", PROJECT_ID);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center space-y-2">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm">Starting SEO Agent...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (sessionError || !session) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center space-y-3 max-w-sm">
-          <Bot className="w-10 h-10 text-muted-foreground mx-auto" />
-          <p className="text-destructive text-sm">{sessionError}</p>
-          <p className="text-muted-foreground text-xs">Add <code className="text-primary">API_KEY_21ST</code> to your .env to activate agents.</p>
-        </div>
-      </div>
-    );
-  }
-
-  return <SeoAgentChat session={session} newSession={newSession} />;
 }
